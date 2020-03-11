@@ -1,6 +1,5 @@
 #lang racket/base
 (require (for-syntax racket/base)
-         ;;frog/widgets
          racket/contract/base
          racket/contract/region
          racket/dict
@@ -26,9 +25,7 @@
 
 ;; The modules needed by the template. Note that these must
 ;; be required above normally in this template.rkt module.
-(define mods '(racket
-               web-server/templates
-               frog/widgets))
+(define mods '(racket web-server/templates))
 
 ;; Create a namespace in which to evaluate templates, attach and
 ;; require the desired modules, and keep reusing it (faster).

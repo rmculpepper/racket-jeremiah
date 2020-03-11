@@ -1,6 +1,10 @@
 #lang racket/base
-(require "util.rkt"
-         "post.rkt")
+(require racket/match
+         racket/path
+         racket/file
+         "config.rkt"
+         "util.rkt"
+         "private/post.rkt")
 
 ;; ----
 
@@ -11,13 +15,12 @@
   (path ;; AbsPath
    name ;; String
    cachedir ;; AbsPath -- may not exist, initially
-   meta ;; #f or ???
    ) #:prefab)
 
 ;; path->postsrc : Path -> postsrc
 (define (path->postsrc p)
   (define name (path->string (file-name-from-path p)))
-  (postsrc path name (build-dir (get-post-cache-dir) name)))
+  (postsrc p name (build-path (get-post-cache-dir) name)))
 
 (struct postinfo
   (src  ;; postsrc
@@ -36,7 +39,7 @@
   ;; FIXME: generalize to multiple dirs?
   (define post-src-paths (find-files post-src-path? (get-post-src-dir)))
 
-  (define srcs (map path->postsrc))
+  (define srcs (map path->postsrc post-src-paths))
   (check-duplicate-post-src srcs)
 
   ;; First, build to cache
@@ -62,19 +65,25 @@
 
   (void))
 
+(define (build/cache-post src)
+  (match-define (postsrc path name cachedir) src)
+  ;; FIXME: unless cachedir exists & has timestamp > src path timestamp
+  (make-directory* cachedir)
+  (build-post path cachedir))
+
 ;; ----------------------------------------
 
 (define (find-relative-files ok? dir)
   (parameterize ((current-directory dir))
     (find-files ok?)))
-    
+
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
 (define (check-duplicate-post-src srcs)
   (define seen (make-hash)) ;; Hash[String => postsrc]
-  (with-delay-exception
+  (with-delay-exceptions
     (for ([src (in-list srcs)])
       (delay-exception
-       (cond [(hash-ref seen (postsrc-name src))
+       (cond [(hash-ref seen (postsrc-name src) #f)
               => (lambda (prev-src)
                    (j-error "duplicate post name\n  path: ~e\n  previous path: ~e"
                             (postsrc-path src) (postsrc-path prev-src)))]
