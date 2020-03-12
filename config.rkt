@@ -92,3 +92,13 @@
 ;; ============================================================
 ;; Page configuration
 
+(define permalink-pattern (make-parameter "{year}/{month}/{title}"))
+(define draft-permalink-pattern (make-parameter "draft/{title}"))
+
+(define (get-permalink-pattern)
+  (cond [(permalink-pattern) => values]
+        [else (error 'get-permalink-pattern "not set")]))
+
+(define (get-draft-permalink-pattern)
+  (cond [(draft-permalink-pattern) => values]
+        [else (error 'get-draft-permalink-pattern "not set")]))

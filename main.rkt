@@ -1,12 +1,14 @@
 #lang racket/base
 (require racket/match
+         racket/class
          racket/path
          racket/file
          "config.rkt"
          "util.rkt"
          "private/post.rkt")
 
-;; ----
+;; ----------------------------------------
+;; Post Source
 
 (define (post-src-path? p)
   (post-file-name? (path->string (file-name-from-path p))))
@@ -21,24 +23,6 @@
 (define (path->postsrc p)
   (define name (path->string (file-name-from-path p)))
   (postsrc p name (build-path (get-post-cache-dir) name)))
-
-(struct postinfo
-  (src   ;; postsrc
-   meta  ;; MetaHash
-   blurb ;; XExprs
-   more? ;; Boolean
-   ) #:prefab)
-
-(define (postinfo-index? info)
-  (member (metadata-display (postinfo-meta info)) '("index")))
-(define (postinfo-render? info)
-  (member (metadata-display (postinfo-meta info)) '("index" "draft")))
-
-(define (postinfo-sortkey info)
-  (define meta (postinfo-meta info))
-  (define date (or (metadata-date meta)
-                   (error 'postinfo-sortkey "no date: ~e" info)))
-  (string-append date (metadata-auxsort meta)))
 
 ;; ----------------------------------------
 
@@ -117,7 +101,30 @@
   (define-values (_ts meta-h blurb more?) (read-post-cache cachedir))
   (postinfo src meta-h blurb more?))
 
-;; ----------------------------------------
+;; ============================================================
+;; Post Info
+
+(struct postinfo
+  (src   ;; postsrc
+   meta  ;; MetaHash
+   blurb ;; XExprs
+   more? ;; Boolean
+   ) #:prefab)
+
+(define (postinfo-index? info)
+  (member (metadata-display (postinfo-meta info)) '("index")))
+(define (postinfo-render? info)
+  (member (metadata-display (postinfo-meta info)) '("index" "draft")))
+
+(define (postinfo-sortkey info)
+  (define meta (postinfo-meta info))
+  (define date (or (metadata-date meta)
+                   (error 'postinfo-sortkey "no date: ~e" info)))
+  (string-append date (metadata-auxsort meta)))
+
+
+;; ============================================================
+;; Indexes
 
 (struct postindex
   (posts  ;; (Listof postinfo)
