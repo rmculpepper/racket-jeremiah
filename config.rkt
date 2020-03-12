@@ -43,12 +43,14 @@
 ;; URL
 
 ;; base-url : (Parameterof URL) -- not string!
+;; PRE: path must end in "/" (represented as empty final path/param)
 (define base-url (make-parameter #f))
 
 (define (get-base-url)
   (cond [(base-url) => values]
         [else (error 'get-base-url "not set")]))
 
+#;
 ;; path->rel-www : Path -> String
 ;; Convert filesystem path to URL path (not encoded) relative to URL base.
 ;; PRE: path is subpath of (get-dest-dir).
@@ -57,6 +59,7 @@
   (define path* (simplify-path (path->complete-path path)))
   (string-join (abs->rel 'path->rel-url path* (get-dest-dir)) "/"))
 
+#;
 ;; abs->rel : Symbol Path Path -> (Listof PathSegment)
 (define (abs->rel who a b)
   (define as (explode-path a))
@@ -66,6 +69,7 @@
     (error who "path does not extend base\n  path: ~e\n  base: ~e" b a))
   tail)
 
+#;
 ;; path->abs-url : Path -> URL
 (define (path->abs-url path)
   (combine-url/relative (get-base-url) (path->rel-www path)))

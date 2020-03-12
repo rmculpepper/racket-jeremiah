@@ -286,7 +286,7 @@ POST Conventions
          [`(h2 . ,_)
           (match x
             [`(h2 () (a . ,_) ,@title-xs)
-             (set! meta-h (hash-set meta-h "Title" (xexpr->markdown `(span () ,@title-xs))))]
+             (set! meta-h (hash-set meta-h 'title (xexpr->markdown `(span () ,@title-xs))))]
             [_ (void)])
           '()]
          ;; Convert blockquotes (???)

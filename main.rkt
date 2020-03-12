@@ -3,6 +3,7 @@
          racket/class
          racket/path
          racket/file
+         net/url
          "config.rkt"
          "util.rkt"
          "private/post.rkt")
@@ -52,6 +53,7 @@
 
   (define index (build-index infos))
 
+  infos
   #|
   ;; Copy post files from cache to dest-dir
   ;;(delete-directory/files (get-dest-dir))
@@ -60,9 +62,7 @@
     (copy-directory/files (postsrc-cachedir (postinfo-src info))
                           (postinfo->dest-dir info)))
   ;; write index...
-  |#
-
-  (void))
+  |#)
 
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
 (define (check-duplicate-post-src srcs)
@@ -95,47 +95,81 @@
   (with-handlers ([exn:fail:filesystem? (lambda (e) -inf.0)])
     (with-input-from-file (build-path cachedir "_cache.rktd") read)))
 
-;; read-post-info : postsrc -> postinfo
-(define (read-post-info src)
-  (match-define (postsrc path name cachedir) src)
-  (define-values (_ts meta-h blurb more?) (read-post-cache cachedir))
-  (postinfo src meta-h blurb more?))
-
 ;; ============================================================
 ;; Post Info
 
-(struct postinfo
-  (src   ;; postsrc
-   meta  ;; MetaHash
-   blurb ;; XExprs
-   more? ;; Boolean
-   ) #:prefab)
+;; read-post-info : postsrc -> PostInfo
+(define (read-post-info src)
+  (match-define (postsrc path name cachedir) src)
+  (define-values (_ts meta blurb more?) (read-post-cache cachedir))
+  (new postinfo% (src src) (meta meta) (blurb blurb) (more? more?)))
 
-(define (postinfo-index? info)
-  (member (metadata-display (postinfo-meta info)) '("index")))
-(define (postinfo-render? info)
-  (member (metadata-display (postinfo-meta info)) '("index" "draft")))
+;; PostInfo = instance of postinfo%
+(define postinfo%
+  (class object%
+    (init-field src meta blurb more?)
+    (super-new)
 
-(define (postinfo-sortkey info)
-  (define meta (postinfo-meta info))
-  (define date (or (metadata-date meta)
-                   (error 'postinfo-sortkey "no date: ~e" info)))
-  (string-append date (metadata-auxsort meta)))
+    (define/public (get-src) src)
+    (define/public (get-meta) meta)
+    (define/public (get-blurb) blurb)
+    (define/public (get-more?) more?)
+
+    (define/public (get-title) (metadata-title meta))
+    (define/public (get-author) (metadata-author meta))
+    (define/public (get-date) (metadata-date meta))
+    (define/public (get-tags) (metadata-tags meta))
+
+    (define/public (get-rel-www) (post-meta->rel-www meta))
+    (define/public (get-url) (combine-url/relative (get-base-url) (get-rel-www)))
+    (define/public (get-enc-url) (url->string (get-url)))
+
+    (define/public (index?)
+      (member (metadata-display meta) '("index")))
+    (define/public (render?)
+      (member (metadata-display meta) '("index" "draft")))
+
+    (define/public (sortkey) ;; -> String
+      (define date (or (metadata-date meta)
+                       (error 'postinfo-sortkey "no date: ~e" (about))))
+      (string-append date (metadata-auxsort meta)))
+
+    (define/public (about) (format "(postinfo ~e)" src))
+    ))
+
+;; post-meta->rel-www : Meta -> String
+;; URL path (suffix) as string, not including base-url.
+;; Should not have "/" at beginning or end. -- FIXME: enforce on pattern?
+(define (post-meta->rel-www meta)
+  (define title-slug (slug (metadata-title meta)))
+  (define-values (pattern year month day)
+    (match (metadata-date meta)
+      [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
+       (values (get-permalink-pattern) year month day)]
+      [#f
+       (define (nope . _) (error 'post-meta->rel-www "date component not available"))
+       (values (get-draft-permalink-pattern) nope nope nope)]))
+  (regexp-replaces pattern
+                   `([#rx"{year}" ,year]
+                     [#rx"{month}" ,month]
+                     [#rx"{day}" ,day]
+                     [#rx"{title}" ,title-slug]
+                     #;[#rx"{filename}",filename])))
 
 
 ;; ============================================================
 ;; Indexes
 
 (struct postindex
-  (posts  ;; (Listof postinfo)
-   next   ;; Hash[postinfo => postinfo]
-   prev   ;; Hash[postinfo => postinfo]
+  (posts  ;; (Listof PostInfo)
+   next   ;; Hash[PostInfo => PostInfo]
+   prev   ;; Hash[PostInfo => PostInfo]
    ) #:prefab)
 
-;; build-index : (Listof postinfo) -> postindex
+;; build-index : (Listof Postinfo) -> PostIndex
 (define (build-index infos0)
-  (define infos (filter (lambda (info) (postinfo-index? info)) infos0))
-  (define sorted-infos (sort infos string<? #:key postinfo-sortkey))
+  (define infos (filter (lambda (info) (send info index?)) infos0))
+  (define sorted-infos (sort infos string<? #:key (lambda (info) (send info sortkey))))
   (define next (make-hasheq))
   (define prev (make-hasheq))
   (for ([info (in-list sorted-infos)]
