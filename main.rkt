@@ -9,23 +9,6 @@
          "private/post.rkt")
 
 ;; ----------------------------------------
-;; Post Source
-
-(define (post-src-path? p)
-  (post-file-name? (path->string (file-name-from-path p))))
-
-(struct postsrc
-  (path ;; AbsPath
-   name ;; String
-   cachedir ;; AbsPath -- may not exist, initially
-   ) #:prefab)
-
-;; path->postsrc : Path -> postsrc
-(define (path->postsrc p)
-  (define name (path->string (file-name-from-path p)))
-  (postsrc p name (build-path (get-post-cache-dir) name)))
-
-;; ----------------------------------------
 
 ;; FIXME: option to ignore cache timestamps? (or maybe just for scribble?)
 ;; FIXME: option to avoid updating cache?
@@ -94,68 +77,6 @@
 (define (get-cache-timestamp cachedir)
   (with-handlers ([exn:fail:filesystem? (lambda (e) -inf.0)])
     (with-input-from-file (build-path cachedir "_cache.rktd") read)))
-
-;; ============================================================
-;; Post Info
-
-;; read-post-info : postsrc -> PostInfo
-(define (read-post-info src)
-  (match-define (postsrc path name cachedir) src)
-  (define-values (_ts meta blurb more?) (read-post-cache cachedir))
-  (new postinfo% (src src) (meta meta) (blurb blurb) (more? more?)))
-
-;; PostInfo = instance of postinfo%
-(define postinfo%
-  (class object%
-    (init-field src meta blurb more?)
-    (super-new)
-
-    (define/public (get-src) src)
-    (define/public (get-meta) meta)
-    (define/public (get-blurb) blurb)
-    (define/public (get-more?) more?)
-
-    (define/public (get-title) (metadata-title meta))
-    (define/public (get-author) (metadata-author meta))
-    (define/public (get-date) (metadata-date meta))
-    (define/public (get-tags) (metadata-tags meta))
-
-    (define/public (get-rel-www) (post-meta->rel-www meta))
-    (define/public (get-url) (combine-url/relative (get-base-url) (get-rel-www)))
-    (define/public (get-enc-url) (url->string (get-url)))
-
-    (define/public (index?)
-      (member (metadata-display meta) '("index")))
-    (define/public (render?)
-      (member (metadata-display meta) '("index" "draft")))
-
-    (define/public (sortkey) ;; -> String
-      (define date (or (metadata-date meta)
-                       (error 'postinfo-sortkey "no date: ~e" (about))))
-      (string-append date (metadata-auxsort meta)))
-
-    (define/public (about) (format "(postinfo ~e)" src))
-    ))
-
-;; post-meta->rel-www : Meta -> String
-;; URL path (suffix) as string, not including base-url.
-;; Should not have "/" at beginning or end. -- FIXME: enforce on pattern?
-(define (post-meta->rel-www meta)
-  (define title-slug (slug (metadata-title meta)))
-  (define-values (pattern year month day)
-    (match (metadata-date meta)
-      [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
-       (values (get-permalink-pattern) year month day)]
-      [#f
-       (define (nope . _) (error 'post-meta->rel-www "date component not available"))
-       (values (get-draft-permalink-pattern) nope nope nope)]))
-  (regexp-replaces pattern
-                   `([#rx"{year}" ,year]
-                     [#rx"{month}" ,month]
-                     [#rx"{day}" ,day]
-                     [#rx"{title}" ,title-slug]
-                     #;[#rx"{filename}",filename])))
-
 
 ;; ============================================================
 ;; Indexes

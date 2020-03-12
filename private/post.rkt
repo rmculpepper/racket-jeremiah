@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/match
+         racket/class
          racket/list
          racket/string
          racket/hash
@@ -7,29 +8,25 @@
          racket/port
          racket/path
          racket/file
+         net/url
          markdown
+         "../config.rkt"
          "template.rkt"
          "html.rkt"
          "xexpr-map.rkt"
          "xexpr2text.rkt")
 (provide (all-defined-out))
 
-#|
-POST Conventions
-- path -> date convention
-  - eg, path "YYYY-MM-DD-auxtitle.ext" -> YYYY-MM-DD
-  - eg, path "YYYY/MM-DD-auxtitle.ext" -> YYYY-MM-DD
-- draft posts
-- in-source metadata: author, title
-- render to { YYYY/MM/cleaned-title.html, YYYY/MM/cleaned-title/<aux-file> }
-  - alternatively: YYYY/MM/DD/cleaned-title/{index.html, <aux-file>}
-- processing
-  - remove local scribble css, redirect links to global; also javascript
-  - add other css/js links?
-  - optional processing via enhance-body
-|#
+;; TODO IDEAS
+;; - allow path convention: "YYYY/MM-DD-auxtitle.ext" -> YYYY-MM-DD
+;; - allow rendering to either <destpath>/index.html or <destpath>.html
+;; - allow path convention: "post-..." with date set in header?
 
-;; FIXME: allow "post-..." with date set in header?
+;; ============================================================
+;; Post Source
+
+(define (post-src-path? p)
+  (post-file-name? (path->string (file-name-from-path p))))
 
 (define (post-file-name? str)
   (or (dated-post-file-name? str)
@@ -41,11 +38,74 @@ POST Conventions
 (define (draft-post-file-name? str)
   (regexp-match? #px"^draft-(?:.+?)[.](?:md|mdt|scrbl|html)$" str))
 
+(struct postsrc
+  (path ;; AbsPath
+   name ;; String
+   cachedir ;; AbsPath -- may not exist, initially
+   ) #:prefab)
+
+;; path->postsrc : Path -> postsrc
+(define (path->postsrc p)
+  (define name (path->string (file-name-from-path p)))
+  (postsrc p name (build-path (get-post-cache-dir) name)))
+
+
+;; ============================================================
+;; Post Cache
+
+;; Building a post writes the following to its cachedir:
+;; - _cache.rktd - timestamp, meta, blurb-xexprs, more?
+;; - _index.rktd - xexprs of body (need to delay, because of prev/next links?)
+;; - _<other> - other non-public files starting with _
+;; - aux files linked from body
+
+;; build/cache-post : postsrc -> Void
+(define (build/cache-post src)
+  (match-define (postsrc path name cachedir) src)
+  (define src-timestamp (file-or-directory-modify-seconds path))
+  (define cache-timestamp (read-cache-timestamp cachedir))
+  (when #f
+    (eprintf "cache ~s ~a src ~s\n"
+             cache-timestamp
+             (if (< cache-timestamp src-timestamp) '< '>)
+             src-timestamp))
+  ;; FIXME: what about scribble file that depends on modified lib?
+  (unless (> cache-timestamp src-timestamp)
+    (make-directory* cachedir)
+    (build-post path cachedir)))
+
+;; read-post-info : postsrc -> PostInfo
+;; Reads info about a built post from its cache.
+(define (read-post-info src #:who [who 'read-post-info])
+  (match-define (postsrc path name cachedir) src)
+  (define-values (_ts meta blurb more?)
+    (with-input-from-file (build-path cachedir "_cache.rktd")
+      (lambda ()
+        (define timestamp (read))
+        (define meta-h (read))
+        (define blurb (read))
+        (define more? (read))
+        (unless (exact-nonnegative-integer? timestamp)
+          (error who "bad timestamp: ~e" timestamp))
+        (unless (hash? meta-h)
+          (error who "bad metadata: ~e" meta-h))
+        (unless (list? blurb)
+          (error who "bad blurb: ~e" blurb))
+        (unless (boolean? more?)
+          (error who "bad more?: ~e" more?))
+        (values timestamp meta-h blurb more?))))
+  (new postinfo% (src src) (meta meta) (blurb blurb) (more? more?)))
+
+;; read-cache-timestamp : Path -> (U Nat -inf.0)
+(define (read-cache-timestamp cachedir)
+  (with-handlers ([exn:fail:filesystem? (lambda (e) -inf.0)])
+    (with-input-from-file (build-path cachedir "_cache.rktd") read)))
+
 
 ;; ============================================================
 ;; Metadata
 
-;; PostMetadata is a hasheq with the following keys:
+;; PostMetadata is a hasheq with the following possible keys:
 ;; - 'title : String
 ;; - 'date : String -- should have form "YYYY-MM-DD"
 ;; - 'auxsort : String -- extra stuff (eg time of day) to control sorting
@@ -143,12 +203,6 @@ POST Conventions
 
 ;; ============================================================
 ;; Building Posts
-
-;; BUILD writes the following to the cachedir:
-;; - _cache.rktd - timestamp, meta, blurb-xexprs, more?
-;; - _index.rktd - xexprs of body (need to delay, because of prev/next links?)
-;; - _<other> - other non-public files starting with _
-;; - aux files linked from body
 
 ;; build-post : Path -> Void
 ;; PRE: path refers to file, is simplified, has at least one directory part
@@ -336,21 +390,56 @@ POST Conventions
 
 
 ;; ============================================================
-;; Reading Cache
+;; Built Post Info
 
-(define (read-post-cache cachedir)
-  (with-input-from-file (build-path cachedir "_cache.rktd")
-    (lambda ()
-      (define timestamp (read))
-      (define meta-h (read))
-      (define blurb (read))
-      (define more? (read))
-      (unless (exact-nonnegative-integer? timestamp)
-        (error 'read-cache "bad timestamp: ~e" timestamp))
-      (unless (hash? meta-h)
-        (error 'read-cache "bad metadata: ~e" meta-h))
-      (unless (list? blurb)
-        (error 'read-cache "bad blurb: ~e" blurb))
-      (unless (boolean? more?)
-        (error 'read-cache "bad more?: ~e" more?))
-      (values timestamp meta-h blurb more?))))
+;; PostInfo = instance of postinfo%
+(define postinfo%
+  (class object%
+    (init-field src meta blurb more?)
+    (super-new)
+
+    (define/public (get-src) src)
+    (define/public (get-meta) meta)
+    (define/public (get-blurb) blurb)
+    (define/public (get-more?) more?)
+
+    (define/public (get-title) (metadata-title meta))
+    (define/public (get-author) (metadata-author meta))
+    (define/public (get-date) (metadata-date meta))
+    (define/public (get-tags) (metadata-tags meta))
+
+    (define/public (get-rel-www) (post-meta->rel-www meta))
+    (define/public (get-url) (combine-url/relative (get-base-url) (get-rel-www)))
+    (define/public (get-enc-url) (url->string (get-url)))
+
+    (define/public (index?)
+      (member (metadata-display meta) '("index")))
+    (define/public (render?)
+      (member (metadata-display meta) '("index" "draft")))
+
+    (define/public (sortkey) ;; -> String
+      (define date (or (metadata-date meta)
+                       (error 'postinfo-sortkey "no date: ~e" (about))))
+      (string-append date (metadata-auxsort meta)))
+
+    (define/public (about) (format "(postinfo ~e)" src))
+    ))
+
+;; post-meta->rel-www : Meta -> String
+;; URL path (suffix) as string, not including base-url.
+;; Should not have "/" at beginning or end. -- FIXME: enforce on pattern?
+(define (post-meta->rel-www meta)
+  (define title-slug (slug (metadata-title meta)))
+  (define-values (pattern year month day)
+    (match (metadata-date meta)
+      [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
+       (values (get-permalink-pattern) year month day)]
+      [#f
+       (define (nope . _) (error 'post-meta->rel-www "date component not available"))
+       (values (get-draft-permalink-pattern) nope nope nope)]))
+  (regexp-replaces pattern
+                   `([#rx"{year}" ,year]
+                     [#rx"{month}" ,month]
+                     [#rx"{day}" ,day]
+                     [#rx"{title}" ,title-slug]
+                     #;[#rx"{filename}",filename])))
