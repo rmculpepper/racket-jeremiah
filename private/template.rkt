@@ -1,9 +1,7 @@
 #lang racket/base
 (require (for-syntax racket/base)
-         racket/contract/base
-         racket/contract/region
+         racket/path
          racket/dict
-         racket/function
          web-server/templates)
 (provide render-template)
 
@@ -36,7 +34,7 @@
   (parameterize ([current-namespace ns])
     ;; `namespace-attach-module` says the new namespace can reuse the
     ;; module already imported into orig-ns. Faster.
-    (for-each (curry namespace-attach-module orig-ns) mods)
+    (for ([mod (in-list mods)]) (namespace-attach-module orig-ns mod))
     ;; Require the files into the namespace, too. In the case of
     ;; racket, that's mandatory (sorta the #lang racket).  The others
     ;; we could `require` in the eval form, but simplest to handle
@@ -52,11 +50,23 @@
                  [current-load-relative-directory dir])
     (eval `(let (,@(for/list ([(k v) (in-dict dict)])
                      (list k `(quote ,v))))
-             (include-template ,filename))
-          (current-namespace))))
+             (include-template ,filename)))))
+
+;; make-render-template : Path (Listof Symbol) -> Dict[Symbol => Any] -> String
+(define (make-render-template path vars)
+  (define-values (dir file _d?) (split-path (simple-form-path path)))
+  (parameterize ((current-namespace template-namespace)
+                 (current-load-relative-directory dir))
+    (define template-proc (eval `(lambda ,vars (include-template ,file))))
+    (lambda (env)
+      (apply template-proc
+             (for/list ([var (in-list vars)])
+               (unless (hash-has-key? env var)
+                 (error 'make-render-template "no value for symbol: ~e" var))
+               (hash-ref env var))))))
 
 ;; ============================================================
 
-;; Not a submodule. Avoid running the module at all.
+;; Not a test submodule. Avoid running the module at all.
 (module test racket/base
-  (require rackunit))
+  (void))
