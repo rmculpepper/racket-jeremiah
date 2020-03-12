@@ -15,7 +15,11 @@
 ;; FIXME: option to only update cache, avoid writing to dest-dir?
 
 ;; go : -> Void
-(define (go)
+(define (go [dir (current-directory)])
+
+  ;; Load site.rkt for configuration
+  (parameterize ((current-directory (path->complete-path dir)))
+    (dynamic-require (build-path (current-directory) "site.rkt") #f))
 
   ;; Find all post sources
   ;; FIXME: generalize to multiple dirs?
