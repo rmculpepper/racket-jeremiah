@@ -154,7 +154,7 @@ POST Conventions
 ;; PRE: path refers to file, is simplified, has at least one directory part
 ;; PRE: cachedir exists (might not be empty)
 (define (build-post path cachedir)
-  (define timestamp (file-or-directory-modify-seconds path))
+  (define timestamp (current-seconds))
   (define path-meta-h (path->metadata path))
   (define-values (dir name d?) (split-path path)) ;; PRE => name, dir are paths, d? is #f
   (define-values (body header-meta-h body-meta-h)

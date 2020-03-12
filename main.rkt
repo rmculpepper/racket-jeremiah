@@ -67,9 +67,20 @@
 
 (define (build/cache-post src)
   (match-define (postsrc path name cachedir) src)
-  ;; FIXME: unless cachedir exists & has timestamp > src path timestamp
-  (make-directory* cachedir)
-  (build-post path cachedir))
+  (define src-timestamp (file-or-directory-modify-seconds path))
+  (define cache-timestamp (get-cache-timestamp cachedir))
+  (eprintf "cache ~s ~a src ~s\n"
+           cache-timestamp
+           (if (< cache-timestamp src-timestamp) '< '>)
+           src-timestamp)
+  ;; FIXME: what about scribble file that depends on modified lib?
+  (unless (> cache-timestamp src-timestamp)
+    (make-directory* cachedir)
+    (build-post path cachedir)))
+
+(define (get-cache-timestamp cachedir)
+  (with-handlers ([exn:fail:filesystem? (lambda (e) -inf.0)])
+    (with-input-from-file (build-path cachedir "_cache.rktd") read)))
 
 ;; ----------------------------------------
 
