@@ -145,7 +145,7 @@ POST Conventions
 ;; Building Posts
 
 ;; BUILD writes the following to the cachedir:
-;; - _cache.rktd - timestamp, meta, blurb-xexprs
+;; - _cache.rktd - timestamp, meta, blurb-xexprs, more?
 ;; - _index.rktd - xexprs of body (need to delay, because of prev/next links?)
 ;; - _<other> - other non-public files starting with _
 ;; - aux files linked from body
@@ -179,7 +179,7 @@ POST Conventions
   (with-output-to-file (build-path cachedir "_index.rktd") #:exists 'replace
     (lambda () (printf "~s\n" body*)))
   (with-output-to-file (build-path cachedir "_cache.rktd") #:exists 'replace
-    (lambda () (printf "~s\n\n~s\n\n~s\n\n~s\n" timestamp meta-h more? blurb*)))
+    (lambda () (printf "~s\n\n~s\n\n~s\n\n~s\n" timestamp meta-h blurb* more?)))
   (void))
 
 ;; path->prefix : Path -> String
@@ -333,3 +333,24 @@ POST Conventions
         (define body-xs (cddr (read-html-as-xexprs in)))
         (values meta-h body-xs))))
   (values body-xs meta-h '#hasheq()))
+
+
+;; ============================================================
+;; Reading Cache
+
+(define (read-post-cache cachedir)
+  (with-input-from-file (build-path cachedir "_cache.rktd")
+    (lambda ()
+      (define timestamp (read))
+      (define meta-h (read))
+      (define blurb (read))
+      (define more? (read))
+      (unless (exact-nonnegative-integer? timestamp)
+        (error 'read-cache "bad timestamp: ~e" timestamp))
+      (unless (hash? meta-h)
+        (error 'read-cache "bad metadata: ~e" meta-h))
+      (unless (list? blurb)
+        (error 'read-cache "bad blurb: ~e" blurb))
+      (unless (boolean? more?)
+        (error 'read-cache "bad more?: ~e" more?))
+      (values timestamp meta-h blurb more?))))
