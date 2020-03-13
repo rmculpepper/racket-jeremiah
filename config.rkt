@@ -122,7 +122,7 @@
 (define (build-tag-uri suffix #:who [who 'build-tag-uri])
   (define entity (or (tag-uri-entity) (error who "tag URI entity not set")))
   (define prefix (or (tag-uri-prefix) (error who "tag URI prefix not set")))
-  (format "~a:~a~a" entity prefix suffix))
+  (format "tag:~a:~a~a~a" entity prefix (if (equal? suffix "") "" ":") suffix))
 
 ;; ============================================================
 ;; Page configuration

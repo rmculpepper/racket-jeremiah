@@ -52,6 +52,16 @@
                   (hash-ref (postindex-prev index) info #f)
                   (hash-ref (postindex-next index) info #f))))
 
+  ;; Write main index
+  ;; FIXME
+
+  ;; Write tag pages
+  ;; FIXME
+
+  ;; Write feeds
+  (write-atom-feed index #f)
+  ;; FIXME
+
   infos)
 
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
@@ -121,6 +131,7 @@
 ;; write-atom-feed : Index String/#f -> Void
 (define (write-atom-feed index tag)
   (define file-name (format "~a.atom.xml" (or tag "all")))
+  (make-directory* (get-feeds-dest-dir))
   (with-output-to-file (build-path (get-feeds-dest-dir) file-name)
     #:exists 'replace
     (lambda () (write-string (render-atom-feed index tag)))))

@@ -129,7 +129,7 @@
       (error 'metadata-title "missing title: ~e" h)))
 (define (metadata-date h)
   (match (hash-ref h 'date #f)
-    [(pregexp "^\\d{4}-\\d{2}-\\d{2}$" (list d)) d]
+    [(pregexp "^\\d{4}-\\d{2}-\\d{2}" (list d)) d]
     [(? string? d) (error 'metadata-date "bad date: ~e" d)]
     [#f #f]))
 (define (metadata-auxsort h)
@@ -162,7 +162,7 @@
 (define (string->date/8601 s)
   (define (num s) (if s (string->number s) 0))
   (match s
-    [(pregexp "^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?:[:](\\d{2})(Z?))?)?$"
+    [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?:[:](\\d{2}))?(Z)?)?$"
               (list _ year month day hour minute second tz))
      (define dsec
        (find-seconds (num second) (num minute) (num hour)
@@ -530,3 +530,6 @@
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
                [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))))
     ))
+
+
+;; FIXME: split out page%, superclass of post% (??)
