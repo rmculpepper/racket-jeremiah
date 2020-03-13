@@ -8,6 +8,7 @@
          (only-in racket/sequence in-slice)
          (only-in markdown xexpr->string)
          "config.rkt"
+         (prefix-in config: "config.rkt")
          "util.rkt"
          "private/post.rkt"
          "private/template.rkt")
@@ -38,21 +39,18 @@
       (delay-exception (build/cache-post src))))
 
   ;; Read metadata from cache, build index
-  (define infos
+  (define posts
     (for/list ([src (in-list srcs)])
       (read-post-info src)))
 
-  (define index (build-index infos))
+  (define site (new site% (posts posts)))
+  (define index (build-index posts))
 
   ;; Delete existing dest-dir
   ;; (delete-directory/files (get-dest-dir))
 
-  (let ([prev-h (postindex-prev index)]
-        [next-h (postindex-next index)])
-    (for ([info (in-list infos)] #:when (send info render?))
-      (write-post info
-                  (hash-ref (postindex-prev index) info #f)
-                  (hash-ref (postindex-next index) info #f))))
+  (for ([post (in-list posts)] #:when (send post render?))
+    (write-post post (send index get-prev post) (send index get-next post) site))
 
   ;; Write main index
   ;; FIXME
@@ -64,7 +62,7 @@
   (write-atom-feed index #f)
   ;; FIXME
 
-  infos)
+  posts)
 
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
 (define (check-duplicate-post-src srcs)
@@ -78,37 +76,153 @@
                             (postsrc-path src) (postsrc-path prev-src)))]
              [else (hash-set! seen (postsrc-name src) src)])))))
 
+
+;; ============================================================
+;; Site information
+
+(define site%
+  (class object%
+    (init-field posts)
+    (super-new)
+
+    (define/public (get-posts) posts)
+    (define/public (get-tags)
+      (define h (make-hash))
+      (for ([post (in-list posts)]
+            #:when (send post index?)
+            [tag (in-list (send post get-tags))])
+        (hash-set! h tag #t))
+      (sort string<? (hash-keys h)))
+
+    (define/public (get-header-html)
+      (xexprs->html (get-header-xexprs)))
+    (define/public (get-header-xexprs)
+      (define (mkcss path)
+        `(link ([rel "stylesheet"] [type "text/ccs"]
+                [href ,(build-enc-url #:local? #t (get-base-url) path)])))
+      `((meta ([charset "utf-8"]))
+        (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
+        (link ([rel "icon"] [href ,(build-enc-url #:local? #t (get-base-url) "favicon.ico")]))
+        ;; CSS
+        ,(mkcss "css/bootstrap.min.css")
+        ,(mkcss "css/pygments.css")
+        ,(mkcss "css/scribble.css")
+        ,(mkcss "css/custom.css")))
+    ))
+
+(define page<%>
+  (interface ()
+    get-rel-www
+    get-header-html
+
+    ;; Note: page does not include content-html!
+    ))
+
+
 ;; ============================================================
 ;; Indexes
 
-(struct postindex
-  (posts  ;; (Listof PostInfo)  -- sorted most recent first FIXME !!!
-   next   ;; Hash[PostInfo => PostInfo]
-   prev   ;; Hash[PostInfo => PostInfo]
-   ) #:prefab)
+;; Index = instance of index%
+(define index%
+  (class object%
+    (init-field tag     ;; String/#f
+                posts)  ;; (Listof PostInfo), sorted most recent first
+    (super-new)
 
-;; build-index : (Listof Postinfo) -> PostIndex
-(define (build-index infos0)
-  (define infos (filter (lambda (info) (send info index?)) infos0))
-  (define sorted-infos (sort infos string>? #:key (lambda (info) (send info sortkey))))
-  (define next (make-hasheq))
-  (define prev (make-hasheq))
-  (for ([info (in-list sorted-infos)]
-        [next-info (in-list (if (pair? sorted-infos) (cdr sorted-infos) '()))])
-    (hash-set! next info next-info)
-    (hash-set! prev next-info info))
-  (postindex sorted-infos next prev))
+    (define prev-h #f) ;; Hasheq[PostInfo => PostInfo/#f]
+    (define next-h #f) ;; Hasheq[PostInfo => PostInfo/#f]
+    (for ([post (in-list posts)]
+          [next-post (in-list (if (pair? posts) (cdr posts) '()))])
+      (hash-set! next-h post next-post)
+      (hash-set! prev-h next-post post))
+
+    (define/public (get-title)
+      (cond [tag (format "Posts tagged '~a'" tag)]
+            [else (site-title)]))
+    (define/public (get-tag) tag)
+    (define/public (get-posts) posts)
+    (define/public (get-prev p) (hash-ref prev-h p #f))
+    (define/public (get-next p) (hash-ref next-h p #f))
+
+    (define/public (get-updated-8601)
+      (and (pair? posts) (send (car posts) get-date-8601)))
+
+    (define/public (get-feed-file-name)
+      (format "~a.atom.xml" (or tag "all")))
+    (define/public (get-feed-dest-file)
+      (build-path (get-feeds-dest-dir) (get-feed-file-name)))
+    (define/public (get-feed-url)
+      (build-url (get-feeds-url) (get-feed-file-name)))
+    (define/public (get-local-enc-feed-url)
+      (enc-url (local-url (get-feed-url))))
+
+    (define/public (get-tag-url) ;; no tag => base url (implicit /index.html)
+      (if tag (config:get-tag-url tag) (get-base-url)))
+
+    (define/public (get-tag-dest-dir+file-name-base)
+      (cond [tag (values (get-tags-dest-dir) (slug tag))]
+            [else (values (get-dest-dir) "index")]))
+
+    (define/public (get-dest-file/page page-num)
+      (define-values (dest-dir file-name-base) (get-tag-dest-dir+file-name-base))
+      (build-path dest-dir (file/page file-name-base page-num)))
+    ))
+
+;; IndexPage = instance of index-page%
+(define index-page%
+  (class object%
+    (init-field index           ;; Index
+                file-name-base  ;; String
+                page-num        ;; Nat
+                num-pages)      ;; Nat
+
+    (define/public (get-index) index)
+    (define/public (get-page-num) page-num)
+    (define/public (get-num-pages) num-pages)
+    (define/public (get-title)
+      (cond [(zero? page-num) (send index get-title)]
+            [else (format "~a (page ~a)" (send index get-title) (add1 page-num))]))
+
+    (define/public (get-dest-file)
+      (send index get-dest-file/page page-num))
+
+    (define/public (get-rel-www)
+      (format "tags/~a" (file/page file-name-base page-num)))
+    (define/public (get-local-enc-feed-url)
+      (send index get-local-enc-feed-url))
+
+    (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
+    (define/public (get-header-xexprs)
+      (define tag (send index get-tag))
+      `((title ,(send index get-title))
+        ;; (meta ([name "description"] [content ""])) ;; FIXME
+        ,@(if tag (list `(meta ([name "keywords"] [content ,tag]))) '())
+        (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
+               [href ,(build-enc-url (get-tag-url (or tag "all")))]))))
+
+    (define/public (get-pagination-html)
+      (define-values (_dest-dir file-name-base)
+        (send index get-tag-dest-dir+file-name-base))
+      (xexpr->string `(footer ,(bootstrap-pagination file-name-base page-num num-pages))))
+    ))
+
+;; build-index : (Listof Postinfo) -> Index
+(define (build-index posts0)
+  (define posts (filter (lambda (post) (send post index?)) posts0))
+  (define sorted-posts (sort posts string>? #:key (lambda (post) (send post sortkey))))
+  (new index% (posts sorted-posts)))
 
 ;; ============================================================
 ;; Write Post
 
-;; write-post : PostInfo PostInfo/#f PostInfo/#f -> Void
+;; write-post : PostInfo PostInfo/#f PostInfo/#f Site -> Void
 ;; Note: prev = older, next = newer
-(define (write-post post prev-post next-post)
-  (define env (hash 'post post 'prev-post prev-post 'next-post next-post))
+(define (write-post post prev-post next-post site)
   (make-directory* (send post get-out-dir))
+  (define content-html (render-post post prev-post next-post))
+  (define page-html (render-page post content-html site))
   (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
-    (lambda () (write-string (render-post post prev-post next-post))))
+    (lambda () (write-string page-html)))
   (parameterize ((current-directory (send post get-cachedir)))
     (for ([file (in-list (find-files file-exists?))]
           #:when (not (dont-copy-file? file)))
@@ -118,47 +232,37 @@
 (define (render-post post prev-post next-post)
   ((get-post-renderer) post prev-post next-post))
 
+;; render-page : Page String Site -> String
+(define (render-page page content-html site)
+  ((get-page-renderer) page content-html site))
+
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
 
 ;; ============================================================
 ;; Write Index
 
-;; write-index : Index String/#f -> Void
-(define (write-index index tag)
-  (define posts (postindex-posts index))
-  (define title "???") ;; FIXME
-  (define feed-url
-    (let ([feed-file (format "~a.atom.xml" (or tag "all"))])
-      (build-enc-url #:local? #t (get-feeds-url) feed-file)))
+;; write-index : Index Site -> Void
+(define (write-index index site)
+  (define posts (send index get-posts))
   (define num-posts (length posts))
   (define num-pages (ceiling (/ num-posts (site-posts-per-page))))
   (for ([page-num (in-range num-pages)]
         [page-posts (in-slice (site-posts-per-page) posts)])
-    (define page-title
-      (cond [(zero? page-num) title]
-            [else (format "~a (page ~a)" title (add1 page-num))]))
-    (write-index-page page-posts page-title tag feed-url page-num num-pages)))
+    (define index-page
+      (new index-page% (index index) (posts page-posts)
+           (page-num page-num) (num-pages num-pages)))
+    (write-index-page index-page site)))
 
-;; write-index-page : (Listof PostInfo) String String/#f URL Nat Nat -> Void
-(define (write-index-page posts title tag feed-url page-num num-pages)
-  (define-values (dest-dir file-name-base)
-    (cond [tag (values (get-tags-dest-dir) (slug tag))]
-          [else (values (get-dest-dir) "index")]))
-  (define file (file/page file-name-base page-num))
+(define (write-index-page index-page site)
   (define rendered-posts
-    (for/list ([post (in-list posts)])
+    (for/list ([post (in-list (send index-page get-posts))])
       (render-index-entry post)))
-  (define footer
-    (cond [(> num-pages 1)
-           (xexpr->string
-            `(footer ,(bootstrap-pagination file-name-base page-num num-pages)))]
-          [else ""]))
-  (define content (string-join (append rendered-posts (list footer)) "\n"))
-  (render-index title tag content)
-  (with-output-to-file (build-path dest-dir file)
+  (define content-html (render-index index-page (string-join rendered-posts "\n")))
+  (define page-html (render-page index-page content-html site))
+  (with-output-to-file (send index-page get-dest-file)
     #:exists 'replace
-    (lambda () (write-string (render-index title tag content)))))
+    (lambda () (write-string page-html))))
 
 (define (file/page file-name-base page-num)
   (cond [(zero? page-num) (format "~a.html" file-name-base)]
@@ -190,42 +294,9 @@
 (define (render-index-entry post)
   ((get-index-entry-renderer) post))
 
-(define (render-index title tag feed content)
-  ((get-index-entry-renderer) title tag content))
+(define (render-index index-page content-html)
+  ((get-index-entry-renderer) index-page))
 
-#|
-(define site%  ;; post, index
-  (class object%
-    (super-new)
-
-    (define/public (get-tags)
-      _)
-
-    (define/public (get-header-html)
-      _)
-    ))
-|#
-
-#|
-(define index-page% ;; index, post (main index)
-  (class object%
-    (init-field index
-                posts
-                content-html)
-    (super-new)
-
-    (define/public (get-posts) (postindex-posts index))
-    (define/public (get-prev p) (hash-ref (postindex-prev index) p #f))
-    (define/public (get-next p) (hash-ref (postindex-next index) p #f))
-
-    (define/public (get-content-html) content-html)
-
-    (define/public (get-header-html)
-      ...)
-
-    (define/public (get-rel-www) ...)
-    ))
-|#
 
 ;; ============================================================
 ;; Write Atom Feed
@@ -236,41 +307,38 @@
 
 (define reserved-tags '("all" "index" "draft")) ;; FIXME?
 
-;; write-atom-feed : Index String/#f -> Void
-(define (write-atom-feed index tag)
-  (define file-name (format "~a.atom.xml" (or tag "all")))
+;; write-atom-feed : Index -> Void
+(define (write-atom-feed index)
   (make-directory* (get-feeds-dest-dir))
-  (with-output-to-file (build-path (get-feeds-dest-dir) file-name)
+  (with-output-to-file (send index get-feed-dest-file)
     #:exists 'replace
-    (lambda () (write-string (render-atom-feed index tag)))))
+    (lambda () (write-string (render-atom-feed index)))))
 
-;; write-atom-feed : Index String/#f -> String
+;; write-atom-feed : Index -> String
 ;; If tag is #f, feed name is "all" but tag index is main site.
-(define (render-atom-feed index tag)
-  (define posts (postindex-posts index))
+(define (render-atom-feed index)
+  (define posts (send index get-posts))
   (define title "TITLE");; FIXME
-  (define updated (match posts ['() "N/A"] [(cons post _) (send post get-date-8601)]))
+  (define updated (or (send index get-updated-8601) "N/A"))
   (define feed-x
     `(feed
       ([xmlns "http://www.w3.org/2005/Atom"]
        [xml:lang "en"])
       (title ([type "text"]) ,(format "~a: ~a" (get-site-title) title))
       (author (name ,(get-site-author)))
-      (link ([rel "self"] [href ,(enc-url (get-atom-feed-url (or tag "all")))]))
-      (link ([rel "alternate"]
-             [href ,(cond [tag (enc-url (get-tag-url tag))]
-                          [else (enc-url (get-base-url))])]))
+      (link ([rel "self"] [href ,(enc-url (send index get-feed-url))]))
+      (link ([rel "alternate"] [href ,(enc-url (send index get-tag-url))]))
       (id ,(build-tag-uri ""))
       (updated ,updated)
       ,@(for/list ([post (in-list posts)]
                    [_ (in-range (site-max-feed-items))])
-          (post->atom-feed-entry-xexpr tag post))))
+          (post->atom-feed-entry-xexpr post))))
   (string-append 
    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
    (xexpr->string feed-x)))
 
 ;; post->atom-feed-entry-xexpr : String PostInfo -> XExpr
-(define (post->atom-feed-entry-xexpr tag post)
+(define (post->atom-feed-entry-xexpr post)
   `(entry
     (title ([type "text"]) ,(send post get-title))
     (link ([rel "alternate"] [href ,(send post get-full-enc-url)]))

@@ -492,8 +492,6 @@
 
     ;; Rendering utils -- FIXME: split out?
 
-    (define/public (xexpr->html x) (xexpr->string x))
-    (define/public (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
     (define/public (title->html t)
       ;; `parse-markdown` returns (listof xexpr?). For simple "one-liner"
       ;; markdown that's usually a list with just a single 'p element. In
@@ -514,20 +512,11 @@
       (define (mkcss path)
         `(link ([rel "stylesheet"] [type "text/ccs"]
                 [href ,(build-enc-url #:local? #t (get-base-url) path)])))
-      `((meta ([charset "utf-8"]))
-        (title ,(get-title)) ;; FIXME
+      `((title ,(get-title)) ;; FIXME
         (meta ([name "description"] [content ""])) ;; FIXME
         ;;(meta ([name "author"] [content ,(get-authors)]))
         (meta ([name "keywords"] [content ,(string-join (get-tags) ",")]))
-        (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
-        (link ([rel "icon"]
-               [href ,(build-enc-url #:local? #t (get-base-url) "favicon.ico")]))
         (link ([rel "canonical"] [href ,(get-full-enc-url)]))
-        ;; CSS
-        ,(mkcss "css/bootstrap.min.css")
-        ,(mkcss "css/pygments.css")
-        ,(mkcss "css/scribble.css")
-        ,(mkcss "css/custom.css")
         ;; Feeds
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
                [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))))
@@ -535,3 +524,5 @@
 
 
 ;; FIXME: split out page%, superclass of post% (??)
+(define (xexpr->html x) (xexpr->string x))
+(define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
