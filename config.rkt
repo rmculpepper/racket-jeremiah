@@ -11,6 +11,7 @@
 (define site-author (make-parameter "Site Author"))
 (define site-title (make-parameter "Site Title"))
 (define site-max-feed-items (make-parameter 100))
+(define site-posts-per-page (make-parameter 10))
 
 (define (get-site-author #:who [who 'get-site-author])
   (or (site-author) (error who "site author not set")))
@@ -37,6 +38,7 @@
 (define-get-path (get-post-cache-dir) "_cache" "posts")
 (define-get-path (get-dest-dir)       "_build")
 (define-get-path (get-feeds-dest-dir) "_build" "feeds")
+(define-get-path (get-tags-dest-dir)  "_build" "tags")
 
 ;; URL
 
@@ -58,17 +60,6 @@
 
 (define (get-enc-base-url-no-slash #:who [who 'get-enc-base-url-no-slash])
   (no-end-/ (enc-url (get-base-url #:who who))))
-
-#|
-(define-syntax-rule (define-get-enc-url (getter x ...) get-url)
-  (define (getter x ... #:who [who 'getter])
-    (url->string (get-url x ... #:who who))))
-(define-get-enc-url (get-enc-base-url) get-base-url)
-(define-get-enc-url (get-enc-tags-url) get-tags-url)
-(define-get-enc-url (get-enc-feeds-url) get-feeds-url)
-(define-get-enc-url (get-enc-tag-url tag) get-tag-url)
-(define-get-enc-url (get-enc-atom-feed-url tag) get-atom-feed-url)
-|#
 
 ;; URL utils
 
@@ -150,7 +141,13 @@
         [else (error 'get-draft-permalink-pattern "not set")]))
 
 (define post-renderer (make-parameter #f))
-
 (define (get-post-renderer)
-  (cond [(post-renderer) => values]
-        [else (error 'get-post-renderer "not set")]))
+  (or (post-renderer) (error 'get-post-renderer "not set")))
+
+(define index-entry-renderer (make-parameter #f))
+(define (get-index-entry-renderer)
+  (or (index-entry-renderer) (error 'get-index-entry-renderer "not set")))
+
+(define index-renderer (make-parameter #f))
+(define (get-index-renderer)
+  (or (index-renderer) (error 'get-index-renderer "not set")))

@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/runtime-path
+         racket/string
          racket/class
          jeremiah/config
          net/url
@@ -15,3 +16,11 @@
 (post-renderer
  (lambda (post prev-post next-post)
    (include-template "_posts/_post-template.html")))
+
+(index-entry-renderer
+ (lambda (post)
+   (include-template "_posts/_index-entry-template.html")))
+
+(index-renderer
+ (lambda (page rel-prev rel-next)
+   (include-template "_posts/_index-template.html")))

@@ -17,6 +17,7 @@
                 this page's @|uri-path| is the same as the nav link. }
 
             @(define (ni uri label [a-attribs ""])
+              (define uri-path "") ;; FIXME
               @list{
                 <li@(when (string-ci=? uri uri-path) " class=\"active\"")>
                   <a class="nav-link" href="@|uri|"@|a-attribs|>@|label|</a>
@@ -27,7 +28,7 @@
                 The pairs are in the format '((name . url) ...) }
 
             @(define (craft-tag-link tag)
-               @list{<a class="dropdown-item" href="@(send post tag->enc-url tag)">@|tag|</a>})
+               @list{<a class="dropdown-item" href="@(enc-url (local-url (get-tag-url tag)))">@|tag|</a>})
 
             <li class="nav-item dropdown">
               <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
@@ -35,7 +36,7 @@
               </a>
 
               <div class="dropdown-menu">
-                @(map craft-tag-link (send post get-tags))
+                @(map craft-tag-link (send post get-tags)) @; FIXME !!!!
               </div>
             </li>
 

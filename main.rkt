@@ -3,7 +3,9 @@
          racket/class
          racket/path
          racket/file
+         racket/string
          net/url
+         (only-in racket/sequence in-slice)
          (only-in markdown xexpr->string)
          "config.rkt"
          "util.rkt"
@@ -80,7 +82,7 @@
 ;; Indexes
 
 (struct postindex
-  (posts  ;; (Listof PostInfo)
+  (posts  ;; (Listof PostInfo)  -- sorted most recent first FIXME !!!
    next   ;; Hash[PostInfo => PostInfo]
    prev   ;; Hash[PostInfo => PostInfo]
    ) #:prefab)
@@ -88,7 +90,7 @@
 ;; build-index : (Listof Postinfo) -> PostIndex
 (define (build-index infos0)
   (define infos (filter (lambda (info) (send info index?)) infos0))
-  (define sorted-infos (sort infos string<? #:key (lambda (info) (send info sortkey))))
+  (define sorted-infos (sort infos string>? #:key (lambda (info) (send info sortkey))))
   (define next (make-hasheq))
   (define prev (make-hasheq))
   (for ([info (in-list sorted-infos)]
@@ -118,6 +120,112 @@
 
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
+
+;; ============================================================
+;; Write Index
+
+;; write-index : Index String/#f -> Void
+(define (write-index index tag)
+  (define posts (postindex-posts index))
+  (define title "???") ;; FIXME
+  (define feed-url
+    (let ([feed-file (format "~a.atom.xml" (or tag "all"))])
+      (build-enc-url #:local? #t (get-feeds-url) feed-file)))
+  (define num-posts (length posts))
+  (define num-pages (ceiling (/ num-posts (site-posts-per-page))))
+  (for ([page-num (in-range num-pages)]
+        [page-posts (in-slice (site-posts-per-page) posts)])
+    (define page-title
+      (cond [(zero? page-num) title]
+            [else (format "~a (page ~a)" title (add1 page-num))]))
+    (write-index-page page-posts page-title tag feed-url page-num num-pages)))
+
+;; write-index-page : (Listof PostInfo) String String/#f URL Nat Nat -> Void
+(define (write-index-page posts title tag feed-url page-num num-pages)
+  (define-values (dest-dir file-name-base)
+    (cond [tag (values (get-tags-dest-dir) (slug tag))]
+          [else (values (get-dest-dir) "index")]))
+  (define file (file/page file-name-base page-num))
+  (define rendered-posts
+    (for/list ([post (in-list posts)])
+      (render-index-entry post)))
+  (define footer
+    (cond [(> num-pages 1)
+           (xexpr->string
+            `(footer ,(bootstrap-pagination file-name-base page-num num-pages)))]
+          [else ""]))
+  (define content (string-join (append rendered-posts (list footer)) "\n"))
+  (render-index title tag content)
+  (with-output-to-file (build-path dest-dir file)
+    #:exists 'replace
+    (lambda () (write-string (render-index title tag content)))))
+
+(define (file/page file-name-base page-num)
+  (cond [(zero? page-num) (format "~a.html" file-name-base)]
+        [else (format "~a-~a.html" file-name-base page-num)]))
+
+(define (bootstrap-pagination file-name-base page-num num-pages)
+  `(ul ([class "pagination"])
+       ,(cond [(zero? page-num)
+               `(li ([class "page-item disabled"])
+                    (a ([class "page-link"] [href "#"]) 'larr))]
+              [else
+               `(li ([class "page-item"])
+                    (a ([class "page-link"]
+                        [href ,(file/page file-name-base (sub1 page-num))])
+                       'larr))])
+       ,@(for/list ([n (in-range num-pages)])
+           `(li ([class ,(cond [(= n page-num) "page-item active"] [else "page-item"])])
+                (a ([class "page-link"]
+                    [href ,(file/page file-name-base n)])
+                   ,(number->string (add1 n)))))
+       ,(cond [(= (add1 page-num) num-pages)
+               `(li ([class "page-item disabled"])
+                    (a ([class "page-link"] [href "#"]) 'rarr))]
+              [else `(li ([class "page-item"])
+                         (a ([class "page-link"]
+                             [href ,(file/page file-name-base (add1 page-num))])
+                            'rarr))])))
+
+(define (render-index-entry post)
+  ((get-index-entry-renderer) post))
+
+(define (render-index title tag feed content)
+  ((get-index-entry-renderer) title tag content))
+
+#|
+(define site%  ;; post, index
+  (class object%
+    (super-new)
+
+    (define/public (get-tags)
+      _)
+
+    (define/public (get-header-html)
+      _)
+    ))
+|#
+
+#|
+(define index-page% ;; index, post (main index)
+  (class object%
+    (init-field index
+                posts
+                content-html)
+    (super-new)
+
+    (define/public (get-posts) (postindex-posts index))
+    (define/public (get-prev p) (hash-ref (postindex-prev index) p #f))
+    (define/public (get-next p) (hash-ref (postindex-next index) p #f))
+
+    (define/public (get-content-html) content-html)
+
+    (define/public (get-header-html)
+      ...)
+
+    (define/public (get-rel-www) ...)
+    ))
+|#
 
 ;; ============================================================
 ;; Write Atom Feed
