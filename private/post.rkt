@@ -4,6 +4,7 @@
          racket/list
          racket/string
          racket/hash
+         racket/date
          racket/sequence
          racket/port
          racket/path
@@ -156,6 +157,19 @@
     [(regexp #rx"^draft-(?:.+?)[.](?:md|mdt|scrbl|html)$")
      (hasheq 'draft "yes")]
     [_ #hasheq()]))
+
+;; string->date/8601 : String -> Date
+(define (string->date/8601 s)
+  (define (num s) (if s (string->number s) 0))
+  (match s
+    [(pregexp "^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?:[:](\\d{2})(Z?))?)?$"
+              (list _ year month day hour minute second tz))
+     (define dsec
+       (find-seconds (num second) (num minute) (num hour)
+                     (num day) (num month) (num year)
+                     (not (equal? tz "Z"))))
+     (seconds->date dsec #f)]
+    [_ (error 'string->date/8601 "bad date: ~e" s)]))
 
 ;; ------------------------------------------------------------
 ;; Metadata Header
@@ -400,15 +414,25 @@
 
     (define/public (get-src) src)
     (define/public (get-meta) meta)
-    (define/public (get-blurb) blurb)
+    (define/public (get-blurb-xexprs) blurb)
     (define/public (get-more?) more?)
 
     (define/public (get-cachedir) (postsrc-cachedir src))
 
     (define/public (get-title) (metadata-title meta))
     (define/public (get-author) (metadata-author meta))
-    (define/public (get-date) (metadata-date meta))
     (define/public (get-tags) (metadata-tags meta))
+
+    (define/public (get-date) ;; short date: YYYY-MM-DD
+      (match (metadata-date meta)
+        [(pregexp "^(\\d{4}-\\d{2}-\\d{2})" (list _ d)) d]
+        [#f (error 'get-date "date not available\n  post: ~a" (about))]))
+    (define/public (get-date-object)
+      (cond [(metadata-date meta) => string->date/8601]
+            [else (error 'get-date-obj "date not available\n  post: ~a" (about))]))
+    (define/public (get-date-8601)
+      (parameterize ((date-display-format 'iso-8601))
+        (format "~aZ" (date->string (get-date-object) #t))))
 
     (define/public (get-rel-www) (post-meta->rel-www meta))
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
@@ -434,6 +458,7 @@
     ;; Rendering
 
     (define/public (get-title-html) (title->html (get-title)))
+    (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
     (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
     (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
     (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
@@ -486,9 +511,7 @@
         ,(mkcss "css/custom.css")
         ;; Feeds
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))
-        (link ([rel "alternate"] [type "application/rss+xml"] [title "RSS Feed"]
-               [href ,(build-enc-url (get-base-url) "feeds/all.rss.xml")]))))
+               [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))))
     ))
 
 ;; post-meta->rel-www : Meta -> String
@@ -509,10 +532,3 @@
                      [#rx"{day}" ,day]
                      [#rx"{title}" ,title-slug]
                      #;[#rx"{filename}",filename])))
-
-(define (build-enc-url url . paths)
-  (url->string (apply build-url url paths)))
-
-(define (build-url url . paths)
-  (for/fold ([url url]) ([path (in-list paths)])
-    (combine-url/relative url path)))

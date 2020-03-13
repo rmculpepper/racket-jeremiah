@@ -5,40 +5,37 @@
 (provide (all-defined-out))
 
 ;; ============================================================
+;; Site configuration
+
+(define site-author (make-parameter "Site Author"))
+(define site-title (make-parameter "Site Title"))
+(define site-max-feed-items (make-parameter 100))
+
+(define (get-site-author #:who [who 'get-site-author])
+  (or (site-author) (error who "site author not set")))
+(define (get-site-title #:who [who 'get-site-title])
+  (or (site-title) (error who "site title not set")))
+
+
+;; ============================================================
 ;; Build configuration
 
 ;; Directories
 
 (define root-dir (make-parameter #f))
-(define post-src-dir (make-parameter #f))
 
-(define (get-post-src-dir)
-  (cond [(post-src-dir) => values]
-        [(root-dir) => (lambda (root) (build-path root "_posts"))]
-        [else (error 'get-post-src-dir "not set")]))
+(define (get-root-dir #:who [who 'get-root-dir])
+  (or (root-dir) (error who "root directory not set")))
 
-(define (get-cache-dir #:fail-ok? [fail-ok? #f])
-  (cond [(cache-dir) => values]
-        [(root-dir) => (lambda (root) (build-path root "_cache"))]
-        [fail-ok? #f]
-        [else (error 'get-cache-dir "not set")]))
+(define-syntax-rule (define-get-path (getter x ...) relpath ...)
+  (define (getter x ... #:who [who 'getter])
+    (build-path (get-root-dir #:who who) relpath ...)))
 
-(define cache-dir (make-parameter #f))
-(define (get-post-cache-dir #:fail-ok? [fail-ok? #f])
-  (cond [(get-cache-dir #:fail-ok? #t)
-         => (lambda (d) (build-path d "posts"))]
-        [fail-ok? #f]
-        [else (error 'get-post-cache-dir "not set")]))
-
-(define dest-dir (make-parameter #f))
-
-(define (get-dest-dir)
-  (cond [(dest-dir) => values]
-        [(root-dir) => (lambda (root) (build-path root "_build"))]
-        [else (error 'get-dest-dir "not set")]))
-
-(define (get-tags-dir) (build-path (get-dest-dir) "tags"))
-(define (get-feeds-dir) (build-path (get-feeds-dir) "feeds"))
+(define-get-path (get-post-src-dir)   "_posts")
+(define-get-path (get-cache-dir)      "_cache")
+(define-get-path (get-post-cache-dir) "_cache" "posts")
+(define-get-path (get-dest-dir)       "_build")
+(define-get-path (get-feeds-dest-dir) "_build" "feeds")
 
 ;; URL
 
@@ -46,46 +43,46 @@
 ;; PRE: path must end in "/" (represented as empty final path/param)
 (define base-url (make-parameter #f))
 
-(define (get-base-url)
-  (cond [(base-url) => values]
-        [else (error 'get-base-url "not set")]))
+(define (get-base-url #:who [who 'get-base-url])
+  (or (base-url) (error who "base URL not set")))
 
-(define (get-enc-base-url) ;; FIXME: w/ or w/o trailing "/"?
-  (url->string (get-base-url)))
+(define-syntax-rule (define-get-url (getter x ...) relpath ...)
+  (define (getter x ... #:who [who 'getter])
+    (build-url (get-base-url #:who who) relpath ...)))
+(define-syntax-rule (define-get-enc-url (getter x ...) get-url)
+  (define (getter x ... #:who [who 'getter])
+    (url->string (get-url x ... #:who who))))
 
-(define (get-enc-base-url-no-slash)
-  (regexp-replace #rx"/$" (get-enc-base-url) ""))
+(define-get-url (get-tags-url)  "tags")
+(define-get-url (get-feeds-url) "feeds")
+(define-get-url (get-tag-url tag) "tags" (format "~a.html" (slug tag)))
+(define-get-url (get-atom-feed-url tag) "feeds" (format "~a.atom.xml" (slug tag)))
 
-(define (get-tags-url)
-  (combine-url/relative (get-base-url) "tags"))
+(define-get-enc-url (get-enc-base-url) get-base-url)
+(define-get-enc-url (get-enc-tags-url) get-tags-url)
+(define-get-enc-url (get-enc-feeds-url) get-feeds-url)
+(define-get-enc-url (get-enc-tag-url tag) get-tag-url)
+(define-get-enc-url (get-enc-atom-feed-url tag) get-atom-feed-url)
 
-(define (get-tag-url tag)
-  (combine-url/relative (get-tags-url) (format "~a.html" (slug tag))))
+(define (get-enc-base-url-no-slash #:who [who 'get-enc-base-url-no-slash])
+  (no-end-/ (get-enc-base-url #:who who)))
 
+;; URL utils
 
-#;
-;; path->rel-www : Path -> String
-;; Convert filesystem path to URL path (not encoded) relative to URL base.
-;; PRE: path is subpath of (get-dest-dir).
-;; Ex: (path->rel-url "/path/to/dest/2000/03/14/x.html") = "2000/03/14/x.html"
-(define (path->rel-www path)
-  (define path* (simplify-path (path->complete-path path)))
-  (string-join (abs->rel 'path->rel-url path* (get-dest-dir)) "/"))
+;; build-url : URL String ... -> URL
+(define (build-url url . paths)
+  (for/fold ([url url]) ([path (in-list paths)])
+    (combine-url/relative url path)))
 
-#;
-;; abs->rel : Symbol Path Path -> (Listof PathSegment)
-(define (abs->rel who a b)
-  (define as (explode-path a))
-  (define bs (explode-path b))
-  (define-values (prefix tail _) (split-common-prefix as bs))
-  (unless (equal? prefix bs)
-    (error who "path does not extend base\n  path: ~e\n  base: ~e" b a))
-  tail)
+;; enc-url : URL -> String
+(define (enc-url url) (url->string url))
 
-#;
-;; path->abs-url : Path -> URL
-(define (path->abs-url path)
-  (combine-url/relative (get-base-url) (path->rel-www path)))
+;; build-enc-url : URL String ... -> String
+(define (build-enc-url url . paths)
+  (url->string (apply build-url url paths)))
+
+;; no-end-/ : String -> String
+(define (no-end-/ str) (regexp-replace #rx"/$" str ""))
 
 ;; slug : String -> String
 ;; Convert a string into a "slug", in which:
@@ -105,6 +102,27 @@
          [s (regexp-replace #px"^-{1,}" s "")]) ;; breaks compat w/ Frog
     (string-normalize-nfd s)))
 
+
+;; ============================================================
+;; Tag URI configuration
+
+;; References for "tag" URI scheme:
+;; - https://tools.ietf.org/html/rfc4151
+
+(define tag-uri-entity (make-parameter #f)) ;; eg, "ryanc@racket-lang.org,2020"
+(define tag-uri-prefix (make-parameter #f)) ;; eg, "blog:"
+
+;; Feed examples:
+;; - tag:ryanc@racket-lang.org,2020:blog:feed/all.atom.xml
+;; - tag:ryanc@racket-lang.org,2020:blog:feed/tag-slug.atom.xml
+;; Post examples:
+;; - tag:ryanc@racket-lang.org,2020:blog:2020/01/01/title-slug
+
+;; build-tag-uri : String -> String
+(define (build-tag-uri suffix #:who [who 'build-tag-uri])
+  (define entity (or (tag-uri-entity) (error who "tag URI entity not set")))
+  (define prefix (or (tag-uri-prefix) (error who "tag URI prefix not set")))
+  (format "~a:~a~a" entity prefix suffix))
 
 ;; ============================================================
 ;; Page configuration

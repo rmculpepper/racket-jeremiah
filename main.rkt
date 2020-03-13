@@ -4,6 +4,7 @@
          racket/path
          racket/file
          net/url
+         (only-in markdown xexpr->string)
          "config.rkt"
          "util.rkt"
          "private/post.rkt"
@@ -47,9 +48,9 @@
   (let ([prev-h (postindex-prev index)]
         [next-h (postindex-next index)])
     (for ([info (in-list infos)] #:when (send info render?))
-      (render-post info
-                   (hash-ref (postindex-prev index) info #f)
-                   (hash-ref (postindex-next index) info #f))))
+      (write-post info
+                  (hash-ref (postindex-prev index) info #f)
+                  (hash-ref (postindex-next index) info #f))))
 
   infos)
 
@@ -89,17 +90,79 @@
 ;; ============================================================
 ;; Write Post
 
-;; render-post : PostInfo PostInfo/#f PostInfo/#f -> Void
+;; write-post : PostInfo PostInfo/#f PostInfo/#f -> Void
 ;; Note: prev = older, next = newer
-(define (render-post post prev-post next-post)
+(define (write-post post prev-post next-post)
   (define env (hash 'post post 'prev-post prev-post 'next-post next-post))
   (make-directory* (send post get-out-dir))
   (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
-    (lambda () (write-string ((get-post-renderer) post prev-post next-post))))
+    (lambda () (write-string (render-post post prev-post next-post))))
   (parameterize ((current-directory (send post get-cachedir)))
     (for ([file (in-list (find-files file-exists?))]
           #:when (not (dont-copy-file? file)))
       (copy-file file (build-path (send post get-out-dir) file)))))
 
+;; render-post : PostInfo PostInfo/#f PostInfo/#f -> String
+(define (render-post post prev-post next-post)
+  ((get-post-renderer) post prev-post next-post))
+
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
+
+;; ============================================================
+;; Write Atom Feed
+
+;; References:
+;; - https://validator.w3.org/feed/docs/atom.html
+;; - https://tools.ietf.org/html/rfc4287
+
+(define reserved-tags '("all" "index" "draft")) ;; FIXME?
+
+;; write-atom-feed : Index String/#f -> Void
+(define (write-atom-feed index tag)
+  (define file-name (format "~a.atom.xml" (or tag "all")))
+  (with-output-to-file (build-path (get-feeds-dest-dir) file-name)
+    #:exists 'replace
+    (lambda () (write-string (render-atom-feed index tag)))))
+
+;; write-atom-feed : Index String/#f -> String
+;; If tag is #f, feed name is "all" but tag index is main site.
+(define (render-atom-feed index tag)
+  (define posts (postindex-posts index))
+  (define title "TITLE");; FIXME
+  (define updated (match posts ['() "N/A"] [(cons post _) (send post get-date-8601)]))
+  (define feed-x
+    `(feed
+      ([xmlns "http://www.w3.org/2005/Atom"]
+       [xml:lang "en"])
+      (title ([type "text"]) ,(format "~a: ~a" (get-site-title) title))
+      (author (name ,(get-site-author)))
+      (link ([rel "self"] [href ,(get-enc-atom-feed-url (or tag "all"))]))
+      (link ([rel "alternate"]
+             [href ,(cond [tag (get-enc-tag-url tag)]
+                          [else (get-enc-base-url)])]))
+      (id ,(build-tag-uri ""))
+      (updated ,updated)
+      ,@(for/list ([post (in-list posts)]
+                   [_ (in-range (site-max-feed-items))])
+          (post->atom-feed-entry-xexpr tag post))))
+  (string-append 
+   "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+   (xexpr->string feed-x)))
+
+;; post->atom-feed-entry-xexpr : String PostInfo -> XExpr
+(define (post->atom-feed-entry-xexpr tag post)
+  `(entry
+    (title ([type "text"]) ,(send post get-title))
+    (link ([rel "alternate"] [href ,(send post get-enc-url)]))
+    (id ,(build-tag-uri (send post get-rel-www)))
+    (published ,(send post get-date-8601))
+    (updated ,(send post get-date-8601))
+    ;; (author (name ,(send post get-author)))
+    (content ([type "html"])
+             ,(send post get-blurb-html)
+             ,(cond [(send post get-more?)
+                     (xexpr->string
+                      `(a ([href ,(send post get-enc-url)])
+                          (em "More" hellip)))]
+                    [else ""]))))
