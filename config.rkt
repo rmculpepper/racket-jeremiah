@@ -1,6 +1,7 @@
 #lang racket/base
 (require racket/string
          racket/list
+         racket/match
          net/url)
 (provide (all-defined-out))
 
@@ -39,47 +40,57 @@
 
 ;; URL
 
-;; base-url : (Parameterof URL) -- not string!
+;; root-url : (Parameterof URL) -- not string!
 ;; PRE: path must end in "/" (represented as empty final path/param)
 (define base-url (make-parameter #f))
 
-(define (get-base-url #:who [who 'get-base-url])
+(define (get-base-url #:who [who 'get-full-base-url])
   (or (base-url) (error who "base URL not set")))
 
 (define-syntax-rule (define-get-url (getter x ...) relpath ...)
   (define (getter x ... #:who [who 'getter])
     (build-url (get-base-url #:who who) relpath ...)))
-(define-syntax-rule (define-get-enc-url (getter x ...) get-url)
-  (define (getter x ... #:who [who 'getter])
-    (url->string (get-url x ... #:who who))))
 
 (define-get-url (get-tags-url)  "tags")
 (define-get-url (get-feeds-url) "feeds")
 (define-get-url (get-tag-url tag) "tags" (format "~a.html" (slug tag)))
 (define-get-url (get-atom-feed-url tag) "feeds" (format "~a.atom.xml" (slug tag)))
 
+(define (get-enc-base-url-no-slash #:who [who 'get-enc-base-url-no-slash])
+  (no-end-/ (enc-url (get-base-url #:who who))))
+
+#|
+(define-syntax-rule (define-get-enc-url (getter x ...) get-url)
+  (define (getter x ... #:who [who 'getter])
+    (url->string (get-url x ... #:who who))))
 (define-get-enc-url (get-enc-base-url) get-base-url)
 (define-get-enc-url (get-enc-tags-url) get-tags-url)
 (define-get-enc-url (get-enc-feeds-url) get-feeds-url)
 (define-get-enc-url (get-enc-tag-url tag) get-tag-url)
 (define-get-enc-url (get-enc-atom-feed-url tag) get-atom-feed-url)
-
-(define (get-enc-base-url-no-slash #:who [who 'get-enc-base-url-no-slash])
-  (no-end-/ (get-enc-base-url #:who who)))
+|#
 
 ;; URL utils
-
-;; build-url : URL String ... -> URL
-(define (build-url url . paths)
-  (for/fold ([url url]) ([path (in-list paths)])
-    (combine-url/relative url path)))
 
 ;; enc-url : URL -> String
 (define (enc-url url) (url->string url))
 
+;; local-url : URL -> URL
+(define (local-url u #:who [who 'local-url])
+  (match u
+    [(url scheme user host port #t path '() #f)
+     (url #f     #f   #f   #f   #t path '() #f)]
+    [_ (error who "cannot convert to local URL: ~e" u)]))
+
+;; build-url : URL String ... -> URL
+(define (build-url url #:local? [local? #f] . paths)
+  (for/fold ([url (if local? (local-url url) url)])
+            ([path (in-list paths)])
+    (combine-url/relative url path)))
+
 ;; build-enc-url : URL String ... -> String
-(define (build-enc-url url . paths)
-  (url->string (apply build-url url paths)))
+(define (build-enc-url url #:local? [local? #f] . paths)
+  (url->string (apply build-url url paths #:local? local?)))
 
 ;; no-end-/ : String -> String
 (define (no-end-/ str) (regexp-replace #rx"/$" str ""))

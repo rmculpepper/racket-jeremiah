@@ -148,10 +148,10 @@
        [xml:lang "en"])
       (title ([type "text"]) ,(format "~a: ~a" (get-site-title) title))
       (author (name ,(get-site-author)))
-      (link ([rel "self"] [href ,(get-enc-atom-feed-url (or tag "all"))]))
+      (link ([rel "self"] [href ,(enc-url (get-atom-feed-url (or tag "all")))]))
       (link ([rel "alternate"]
-             [href ,(cond [tag (get-enc-tag-url tag)]
-                          [else (get-enc-base-url)])]))
+             [href ,(cond [tag (enc-url (get-tag-url tag))]
+                          [else (enc-url (get-base-url))])]))
       (id ,(build-tag-uri ""))
       (updated ,updated)
       ,@(for/list ([post (in-list posts)]
@@ -165,7 +165,7 @@
 (define (post->atom-feed-entry-xexpr tag post)
   `(entry
     (title ([type "text"]) ,(send post get-title))
-    (link ([rel "alternate"] [href ,(send post get-enc-url)]))
+    (link ([rel "alternate"] [href ,(send post get-full-enc-url)]))
     (id ,(build-tag-uri (send post get-rel-www)))
     (published ,(send post get-date-8601))
     (updated ,(send post get-date-8601))
@@ -174,6 +174,6 @@
              ,(send post get-blurb-html)
              ,(cond [(send post get-more?)
                      (xexpr->string
-                      `(a ([href ,(send post get-enc-url)])
+                      `(a ([href ,(send post get-full-enc-url)])
                           (em "More" hellip)))]
                     [else ""]))))

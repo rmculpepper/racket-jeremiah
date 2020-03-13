@@ -10,8 +10,8 @@
   <head>
     @(send post get-header-html)
     @(let ()
-       (define rel-next (and next-post (send next-post get-enc-url)))
-       (define rel-prev (and prev-post (send prev-post get-enc-url)))
+       (define rel-next (and next-post (send next-post get-local-enc-url)))
+       (define rel-prev (and prev-post (send prev-post get-local-enc-url)))
        @list{
          @(when rel-next @list{<link rel="next" href="@|rel-next|">})
          @(when rel-prev @list{<link rel="prev" href="@|rel-prev|">})

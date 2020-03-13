@@ -454,7 +454,8 @@
 
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
-    (define/public (get-enc-url) (url->string (get-url)))
+    (define/public (get-full-enc-url) (enc-url (get-url)))
+    (define/public (get-local-enc-url) (enc-url (local-url (get-url))))
 
     (define/public (index?)
       (member (metadata-display meta) '("index")))
@@ -512,15 +513,16 @@
     (define/public (get-header-xexprs)
       (define (mkcss path)
         `(link ([rel "stylesheet"] [type "text/ccs"]
-                [href ,(build-enc-url (get-base-url) path)])))
+                [href ,(build-enc-url #:local? #t (get-base-url) path)])))
       `((meta ([charset "utf-8"]))
         (title ,(get-title)) ;; FIXME
         (meta ([name "description"] [content ""])) ;; FIXME
         ;;(meta ([name "author"] [content ,(get-authors)]))
         (meta ([name "keywords"] [content ,(string-join (get-tags) ",")]))
         (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
-        (link ([rel "icon"] [href ,(build-enc-url (get-base-url) "favicon.ico")]))
-        (link ([rel "canonical"] [href ,(get-enc-url)]))
+        (link ([rel "icon"]
+               [href ,(build-enc-url #:local? #t (get-base-url) "favicon.ico")]))
+        (link ([rel "canonical"] [href ,(get-full-enc-url)]))
         ;; CSS
         ,(mkcss "css/bootstrap.min.css")
         ,(mkcss "css/pygments.css")
