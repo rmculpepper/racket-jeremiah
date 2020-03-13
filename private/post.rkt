@@ -434,7 +434,24 @@
       (parameterize ((date-display-format 'iso-8601))
         (format "~aZ" (date->string (get-date-object) #t))))
 
-    (define/public (get-rel-www) (post-meta->rel-www meta))
+    (define/public (get-rel-www) ;; -> String
+      ;; URL path as string, not including base-url
+      ;; should not start or end with "/" -- FIXME: enforce on pattern?
+      (define title-slug (slug (metadata-title meta)))
+      (define-values (pattern year month day)
+        (match (metadata-date meta)
+          [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
+           (values (get-permalink-pattern) year month day)]
+          [#f
+           (define (nope . _) (error 'post-meta->rel-www "date component not available"))
+           (values (get-draft-permalink-pattern) nope nope nope)]))
+      (regexp-replaces pattern
+                       `([#rx"{year}" ,year]
+                         [#rx"{month}" ,month]
+                         [#rx"{day}" ,day]
+                         [#rx"{title}" ,title-slug]
+                         #;[#rx"{filename}",filename])))
+
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
     (define/public (get-enc-url) (url->string (get-url)))
@@ -513,22 +530,3 @@
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
                [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))))
     ))
-
-;; post-meta->rel-www : Meta -> String
-;; URL path (suffix) as string, not including base-url.
-;; Should not have "/" at beginning or end. -- FIXME: enforce on pattern?
-(define (post-meta->rel-www meta)
-  (define title-slug (slug (metadata-title meta)))
-  (define-values (pattern year month day)
-    (match (metadata-date meta)
-      [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
-       (values (get-permalink-pattern) year month day)]
-      [#f
-       (define (nope . _) (error 'post-meta->rel-www "date component not available"))
-       (values (get-draft-permalink-pattern) nope nope nope)]))
-  (regexp-replaces pattern
-                   `([#rx"{year}" ,year]
-                     [#rx"{month}" ,month]
-                     [#rx"{day}" ,day]
-                     [#rx"{title}" ,title-slug]
-                     #;[#rx"{filename}",filename])))
