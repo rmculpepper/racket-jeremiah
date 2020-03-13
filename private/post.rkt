@@ -412,7 +412,7 @@
 
     (define/public (get-rel-www) (post-meta->rel-www meta))
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
-    (define/public (get-url) (combine-url/relative (get-base-url) (get-rel-www)))
+    (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
     (define/public (get-enc-url) (url->string (get-url)))
 
     (define/public (index?)
@@ -465,6 +465,30 @@
       `(a ([href ,(tag->enc-url tag-s)]) ,tag-s))
     (define/public (tag->enc-url tag-s)
       (url->string (get-tag-url tag-s)))
+
+    (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
+    (define/public (get-header-xexprs)
+      (define (mkcss path)
+        `(link ([rel "stylesheet"] [type "text/ccs"]
+                [href ,(build-enc-url (get-base-url) path)])))
+      `((meta ([charset "utf-8"]))
+        (title ,(get-title)) ;; FIXME
+        (meta ([name "description"] [content ""])) ;; FIXME
+        ;;(meta ([name "author"] [content ,(get-authors)]))
+        (meta ([name "keywords"] [content ,(string-join (get-tags) ",")]))
+        (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
+        (link ([rel "icon"] [href ,(build-enc-url (get-base-url) "favicon.ico")]))
+        (link ([rel "canonical"] [href ,(get-enc-url)]))
+        ;; CSS
+        ,(mkcss "css/bootstrap.min.css")
+        ,(mkcss "css/pygments.css")
+        ,(mkcss "css/scribble.css")
+        ,(mkcss "css/custom.css")
+        ;; Feeds
+        (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
+               [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))
+        (link ([rel "alternate"] [type "application/rss+xml"] [title "RSS Feed"]
+               [href ,(build-enc-url (get-base-url) "feeds/all.rss.xml")]))))
     ))
 
 ;; post-meta->rel-www : Meta -> String
@@ -485,3 +509,10 @@
                      [#rx"{day}" ,day]
                      [#rx"{title}" ,title-slug]
                      #;[#rx"{filename}",filename])))
+
+(define (build-enc-url url . paths)
+  (url->string (apply build-url url paths)))
+
+(define (build-url url . paths)
+  (for/fold ([url url]) ([path (in-list paths)])
+    (combine-url/relative url path)))

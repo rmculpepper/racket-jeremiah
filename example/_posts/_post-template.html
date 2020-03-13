@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 @(let ()
-   (define title (send post get-title)) ;; FIXME: need to escape html!
-   (define description "")
-   (define keywords (string-join (send post get-tags) ","))
    (define uri-prefix (get-enc-base-url-no-slash))
    (define uri-path (send post get-rel-www))
-   (define full-uri (send post get-enc-url))
-   (define rel-next (and next-post (send next-post get-enc-url)))
-   (define rel-prev (and prev-post (send prev-post get-enc-url)))
    @list{
 <html lang="en">
   @;{ The at-exp reader for a template treats this as a comment.
       Also, notice the use template variables like @title,
       @description etc. }
-  @(include-template "_head-template.html")
+  <head>
+    @(send post get-header-html)
+    @(let ()
+       (define rel-next (and next-post (send next-post get-enc-url)))
+       (define rel-prev (and prev-post (send prev-post get-enc-url)))
+       @list{
+         @(when rel-next @list{<link rel="next" href="@|rel-next|">})
+         @(when rel-prev @list{<link rel="prev" href="@|rel-prev|">})
+    })
+  </head>
   <body>
 
     @(include-template "_body-nav-template.html")
@@ -58,7 +61,7 @@
       @google-plus-share-button[full-uri]
       @disqus-comments["shortname"]
     }
-    @older/newer-links[older-uri older-title newer-uri newer-title #:for-bs 4]
+    @; @older/newer-links[older-uri older-title newer-uri newer-title #:for-bs 4]
   </footer>
 </article>
 <!-- END POST -->
