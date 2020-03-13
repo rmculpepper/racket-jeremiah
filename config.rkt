@@ -23,9 +23,6 @@
         [fail-ok? #f]
         [else (error 'get-cache-dir "not set")]))
 
-(define (get-post-template-file)
-  (build-path (get-post-src-dir) "_post-template.html"))
-
 (define cache-dir (make-parameter #f))
 (define (get-post-cache-dir #:fail-ok? [fail-ok? #f])
   (cond [(get-cache-dir #:fail-ok? #t)
@@ -122,3 +119,9 @@
 (define (get-draft-permalink-pattern)
   (cond [(draft-permalink-pattern) => values]
         [else (error 'get-draft-permalink-pattern "not set")]))
+
+(define post-renderer (make-parameter #f))
+
+(define (get-post-renderer)
+  (cond [(post-renderer) => values]
+        [else (error 'get-post-renderer "not set")]))

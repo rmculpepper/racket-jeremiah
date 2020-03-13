@@ -45,10 +45,9 @@
   ;; (delete-directory/files (get-dest-dir))
 
   (let ([prev-h (postindex-prev index)]
-        [next-h (postindex-next index)]
-        [renderer (make-post-renderer)])
+        [next-h (postindex-next index)])
     (for ([info (in-list infos)] #:when (send info render?))
-      (render-post renderer info
+      (render-post info
                    (hash-ref (postindex-prev index) info #f)
                    (hash-ref (postindex-next index) info #f))))
 
@@ -90,16 +89,13 @@
 ;; ============================================================
 ;; Write Post
 
-;; Unlike Frog, a post is rendered with just the post-template, rather
-;; than both post-template and page-template.
-
 ;; render-post : PostInfo PostInfo/#f PostInfo/#f -> Void
 ;; Note: prev = older, next = newer
-(define (render-post renderer post prev-post next-post)
+(define (render-post post prev-post next-post)
   (define env (hash 'post post 'prev-post prev-post 'next-post next-post))
   (make-directory* (send post get-out-dir))
   (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
-    (lambda () (write-string (renderer env))))
+    (lambda () (write-string ((get-post-renderer) post prev-post next-post))))
   (parameterize ((current-directory (send post get-cachedir)))
     (for ([file (in-list (find-files file-exists?))]
           #:when (not (dont-copy-file? file)))
@@ -107,7 +103,3 @@
 
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
-
-(define (make-post-renderer)
-  (make-render-template (get-post-template-file)
-                        '(post prev-post next-post)))
