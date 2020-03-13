@@ -23,6 +23,9 @@
         [fail-ok? #f]
         [else (error 'get-cache-dir "not set")]))
 
+(define (get-post-template-file)
+  (build-path (get-post-src-dir) "_post-template.html"))
+
 (define cache-dir (make-parameter #f))
 (define (get-post-cache-dir #:fail-ok? [fail-ok? #f])
   (cond [(get-cache-dir #:fail-ok? #t)
@@ -49,6 +52,19 @@
 (define (get-base-url)
   (cond [(base-url) => values]
         [else (error 'get-base-url "not set")]))
+
+(define (get-enc-base-url) ;; FIXME: w/ or w/o trailing "/"?
+  (url->string (get-base-url)))
+
+(define (get-enc-base-url-no-slash)
+  (regexp-replace #rx"/$" (get-enc-base-url) ""))
+
+(define (get-tags-url)
+  (combine-url/relative (get-base-url) "tags"))
+
+(define (get-tag-url tag)
+  (combine-url/relative (get-tags-url) (format "~a.html" (slug tag))))
+
 
 #;
 ;; path->rel-www : Path -> String

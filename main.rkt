@@ -6,7 +6,8 @@
          net/url
          "config.rkt"
          "util.rkt"
-         "private/post.rkt")
+         "private/post.rkt"
+         "private/template.rkt")
 
 ;; ----------------------------------------
 
@@ -40,16 +41,18 @@
 
   (define index (build-index infos))
 
-  infos
-  #|
-  ;; Copy post files from cache to dest-dir
-  ;;(delete-directory/files (get-dest-dir))
-  (copy-directory/files (get-copy-src-dir) (get-dest-dir) #:preserve-links? #t)
-  (for ([src (in-list srcs)])
-    (copy-directory/files (postsrc-cachedir (postinfo-src info))
-                          (postinfo->dest-dir info)))
-  ;; write index...
-  |#)
+  ;; Delete existing dest-dir
+  ;; (delete-directory/files (get-dest-dir))
+
+  (let ([prev-h (postindex-prev index)]
+        [next-h (postindex-next index)]
+        [renderer (make-post-renderer)])
+    (for ([info (in-list infos)] #:when (send info render?))
+      (render-post renderer info
+                   (hash-ref (postindex-prev index) info #f)
+                   (hash-ref (postindex-next index) info #f))))
+
+  infos)
 
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
 (define (check-duplicate-post-src srcs)
@@ -83,3 +86,28 @@
     (hash-set! next info next-info)
     (hash-set! prev next-info info))
   (postindex sorted-infos next prev))
+
+;; ============================================================
+;; Write Post
+
+;; Unlike Frog, a post is rendered with just the post-template, rather
+;; than both post-template and page-template.
+
+;; render-post : PostInfo PostInfo/#f PostInfo/#f -> Void
+;; Note: prev = older, next = newer
+(define (render-post renderer post prev-post next-post)
+  (define env (hash 'post post 'prev-post prev-post 'next-post next-post))
+  (make-directory* (send post get-out-dir))
+  (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
+    (lambda () (write-string (renderer env))))
+  (parameterize ((current-directory (send post get-cachedir)))
+    (for ([file (in-list (find-files file-exists?))]
+          #:when (not (dont-copy-file? file)))
+      (copy-file file (build-path (send post get-out-dir) file)))))
+
+(define (dont-copy-file? path)
+  (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
+
+(define (make-post-renderer)
+  (make-render-template (get-post-template-file)
+                        '(post prev-post next-post)))

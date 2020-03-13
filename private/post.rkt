@@ -403,12 +403,15 @@
     (define/public (get-blurb) blurb)
     (define/public (get-more?) more?)
 
+    (define/public (get-cachedir) (postsrc-cachedir src))
+
     (define/public (get-title) (metadata-title meta))
     (define/public (get-author) (metadata-author meta))
     (define/public (get-date) (metadata-date meta))
     (define/public (get-tags) (metadata-tags meta))
 
     (define/public (get-rel-www) (post-meta->rel-www meta))
+    (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
     (define/public (get-url) (combine-url/relative (get-base-url) (get-rel-www)))
     (define/public (get-enc-url) (url->string (get-url)))
 
@@ -423,6 +426,45 @@
       (string-append date (metadata-auxsort meta)))
 
     (define/public (about) (format "(postinfo ~e)" src))
+
+    (define/public (get-body-xexprs)
+      (with-input-from-file (build-path (postsrc-cachedir src) "_index.rktd")
+        read))
+
+    ;; Rendering
+
+    (define/public (get-title-html) (title->html (get-title)))
+    (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
+    (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
+    (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
+
+    (define/public (get-date-xexpr)
+      (let ([d (get-date)]) `(time ([datetime ,d] [pubdate "true"]) ,d)))
+    (define/public (get-tags-xexpr)
+      `(span
+        ([class "tags"])
+        ,@(add-between (for/list ([t (in-list (get-tags))])
+                         (tag->xexpr t))
+                       ", ")))
+
+    ;; Rendering utils -- FIXME: split out?
+
+    (define/public (xexpr->html x) (xexpr->string x))
+    (define/public (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
+    (define/public (title->html t)
+      ;; `parse-markdown` returns (listof xexpr?). For simple "one-liner"
+      ;; markdown that's usually a list with just a single 'p element. In
+      ;; that case, discard the 'p and use its body element(s). If it
+      ;; parsed to something more complicated, the visual result will
+      ;; probably be unappealing, but at least handle that case here.
+      (define xs (match (parse-markdown t)
+                   [`((p () . ,xs)) xs]
+                   [xs xs]))
+      (string-join (map xexpr->string xs) ""))
+    (define/public (tag->xexpr tag-s)
+      `(a ([href ,(tag->enc-url tag-s)]) ,tag-s))
+    (define/public (tag->enc-url tag-s)
+      (url->string (get-tag-url tag-s)))
     ))
 
 ;; post-meta->rel-www : Meta -> String

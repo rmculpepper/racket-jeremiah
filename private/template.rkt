@@ -2,8 +2,10 @@
 (require (for-syntax racket/base)
          racket/path
          racket/dict
-         web-server/templates)
-(provide render-template)
+         web-server/templates
+         jeremiah/config)
+(provide render-template
+         make-render-template)
 
 ;; Beware, cargo cults be here!
 ;;
@@ -23,7 +25,7 @@
 
 ;; The modules needed by the template. Note that these must
 ;; be required above normally in this template.rkt module.
-(define mods '(racket web-server/templates))
+(define mods '(racket web-server/templates jeremiah/config))
 
 ;; Create a namespace in which to evaluate templates, attach and
 ;; require the desired modules, and keep reusing it (faster).
@@ -57,13 +59,14 @@
   (define-values (dir file _d?) (split-path (simple-form-path path)))
   (parameterize ((current-namespace template-namespace)
                  (current-load-relative-directory dir))
-    (define template-proc (eval `(lambda ,vars (include-template ,file))))
-    (lambda (env)
+    (define template-proc (eval `(lambda ,vars (include-template ,(path->string file)))))
+    (define (template-renderer env)
       (apply template-proc
              (for/list ([var (in-list vars)])
                (unless (hash-has-key? env var)
-                 (error 'make-render-template "no value for symbol: ~e" var))
-               (hash-ref env var))))))
+                 (error 'template-renderer "no value for symbol: ~e" var))
+               (hash-ref env var))))
+    template-renderer))
 
 ;; ============================================================
 
