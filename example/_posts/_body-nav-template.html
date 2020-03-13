@@ -1,0 +1,57 @@
+    <!-- A standard Twitter Bootstrap nav bar -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+
+      <a href="@|uri-prefix|/index.html" class="navbar-brand">My Blog Brand</a>
+
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+            @;{ We can define Racket functions to "DRY". Here's one to
+                emit HMTL for a nav item, adding class="active" iff
+                this page's @|uri-path| is the same as the nav link. }
+
+            @(define (ni uri label [a-attribs ""])
+              @list{
+                <li@(when (string-ci=? uri uri-path) " class=\"active\"")>
+                  <a class="nav-link" href="@|uri|"@|a-attribs|>@|label|</a>
+                </li> })
+
+
+            @;{ Here we craft the dropdown links from a list of pairs.
+                The pairs are in the format '((name . url) ...) }
+
+            @(define (craft-tag-link tag)
+               @list{<a class="dropdown-item" href="@(send post tag->enc-url tag)">@|tag|</a>})
+
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                @(map craft-tag-link (send post get-tags))
+              </div>
+            </li>
+
+            @ni[(string-append uri-prefix "/About.html") "About"]
+
+            @;{
+            <li class="nav-item">
+              <a class="nav-link" href="@|atom-feed-uri|">Atom</a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link" href="@|rss-feed-uri|">RSS</a>
+            </li>
+            }
+          </ul>
+      </div>
+
+      </div>
+    </nav>
