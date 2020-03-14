@@ -406,11 +406,30 @@
 ;; ============================================================
 ;; Built Post Info
 
+(define page<%>
+  (interface ()
+    ;; get-page-type : -> (U 'post 'index ...)
+    get-page-type
+
+    ;; These may point to a directory with an index.html file.
+    get-url
+    get-local-link       ;; ->
+
+    ;; These refer specifically to page's HTML file.
+    get-page-url
+    get-page-local-link
+
+    ;; get-header-html : -> String
+    get-header-html
+    ))
+
 ;; PostInfo = instance of postinfo%
 (define postinfo%
-  (class object%
+  (class* object% (page<%>)
     (init-field src meta blurb more?)
     (super-new)
+
+    (define/public (get-page-type) 'post)
 
     (define/public (get-src) src)
     (define/public (get-meta) meta)
@@ -451,6 +470,9 @@
                          [#rx"{day}" ,day]
                          [#rx"{title}" ,title-slug]
                          #;[#rx"{filename}",filename])))
+
+    (define/public (get-page-url) (build-url (get-url) "index.html"))
+    (define/public (get-page-local-link) (build-link #:local? #t (get-page-url)))
 
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))

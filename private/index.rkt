@@ -51,14 +51,6 @@
     (define/public (uri-prefix) (get-base-link-no-slash))
     ))
 
-(define page<%>
-  (interface ()
-    get-rel-www
-    get-header-html
-
-    ;; Note: page does not include content-html!
-    ))
-
 
 ;; ============================================================
 ;; Indexes
@@ -108,12 +100,14 @@
 
 ;; IndexPage = instance of index-page%
 (define index-page%
-  (class object%
+  (class* object% (page<%>)
     (init-field index           ;; Index
                 posts           ;; (Listof Post)
                 page-num        ;; Nat
                 num-pages)      ;; Nat
     (super-new)
+
+    (define/public (get-page-type) 'index)
 
     (define/public (get-index) index)
     (define/public (get-posts) posts)
@@ -134,6 +128,9 @@
               [else (build-url (get-base-url) (get-dest-file-name))])))
     (define/public (get-local-link)
       (build-link #:local? #t (get-url)))
+
+    (define/public (get-page-url) (get-url))
+    (define/public (get-page-local-link) (get-local-link))
 
     (define/public (get-enc-feed-local-link)
       (send index get-feed-local-link))

@@ -6,6 +6,21 @@
 (provide (all-defined-out))
 
 ;; ============================================================
+;; Terminology
+
+;; "url" refers to instances of the net/url struct, and "link" refers to the
+;; string representation of a URL. A url or link can be "full" (includes scheme
+;; and host) or "local" (no scheme or host, but absolute path including
+;; prefix). If "local" is not specified, "full" is implicit. A "rel-www" is like
+;; a local link with the prefix removed (and no initial "/").
+
+;; Examples:
+;; - "https://mysite.com/prefix/feeds/neato.atom.xml"   -- full link
+;; - "/prefix/feeds/neato.atom.xml"                     -- local link
+;; - "feeds/neato.atom.xml"                             -- rel-www
+
+
+;; ============================================================
 ;; Site configuration
 
 (define site-author (make-parameter "Site Author"))
@@ -41,9 +56,6 @@
 (define-get-path (get-tags-dest-dir)  "_build" "tags")
 
 ;; URL
-
-;; Note: throughout this project, "url" refers to instances of the net/url
-;; struct, and "link" refers to the string representation of a URL.
 
 ;; root-url : (Parameterof URL) -- not string!
 ;; PRE: path must end in "/" (represented as empty final path/param)
@@ -122,10 +134,10 @@
 (define tag-uri-prefix (make-parameter #f)) ;; eg, "blog:"
 
 ;; Feed examples:
-;; - tag:ryanc@racket-lang.org,2020:blog:feed/all.atom.xml
-;; - tag:ryanc@racket-lang.org,2020:blog:feed/tag-slug.atom.xml
+;; - tag:me@mysite.com,2020:blog:feed/all.atom.xml
+;; - tag:me@mysite.com,2020:blog:feed/tag-slug.atom.xml
 ;; Post examples:
-;; - tag:ryanc@racket-lang.org,2020:blog:2020/01/01/title-slug
+;; - tag:me@mysite.com,2020:blog:2020/01/01/title-slug
 
 ;; build-tag-uri : String -> String
 (define (build-tag-uri suffix #:who [who 'build-tag-uri])
