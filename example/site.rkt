@@ -11,7 +11,7 @@
 (root-dir root)
 (base-url (string->url "https://mysite.com/"))
 
-(tag-uri-entity "ryanc@racket-lang.org,2020")
+(tag-uri-entity "me@mysite.com,2020")
 (tag-uri-prefix "blog")
 
 (page-renderer
