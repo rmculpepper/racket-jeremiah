@@ -13,14 +13,14 @@
 (tag-uri-entity "ryanc@racket-lang.org,2020")
 (tag-uri-prefix "blog")
 
+(page-renderer
+ (lambda (page content-html site)
+   (include-template "page-template.html")))
+
 (post-renderer
  (lambda (post prev-post next-post)
-   (include-template "_posts/_post-template.html")))
+   (include-template "post-template.html")))
 
 (index-entry-renderer
  (lambda (post)
-   (include-template "_posts/_index-entry-template.html")))
-
-(page-renderer
- (lambda (page content-html site)
-   (include-template "_posts/_page-template.html")))
+   (include-template "index-entry-template.html")))
