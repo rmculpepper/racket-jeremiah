@@ -76,14 +76,12 @@
 (define (get-base-local-link-no-slash #:who [who 'get-base-link-no-slash])
   (no-end-/ (url->string (local-url (get-base-url #:who who)))))
 
-(define (get-tag-link tag) (url->string (get-tag-url tag)))
+(define (get-tag-full-link tag) (url->string (get-tag-url tag)))
 (define (get-tag-local-link tag) (url->string (local-url (get-tag-url tag))))
-(define (get-atom-feed-link tag) (url->string (get-atom-feed-url tag)))
+(define (get-atom-feed-full-link tag) (url->string (get-atom-feed-url tag)))
+(define (get-atom-feed-local-link tag) (url->string (local-url (get-atom-feed-url tag))))
 
 ;; URL utils
-
-;; enc-url : URL -> String
-(define (enc-url url) (url->string url))
 
 ;; local-url : URL -> URL
 (define (local-url u #:who [who 'local-url])

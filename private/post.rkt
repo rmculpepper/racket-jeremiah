@@ -413,7 +413,7 @@
 
     ;; These may point to a directory with an index.html file.
     get-url
-    get-local-link       ;; ->
+    get-local-link
 
     ;; These refer specifically to page's HTML file.
     get-page-url
@@ -481,7 +481,7 @@
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
     (define/public (get-full-link) (url->string (get-url)))
     (define/public (get-local-link) (url->string (local-url (get-url))))
-    (define/public (get-feed-local-link) (get-atom-feed-link "all"))
+    (define/public (get-feed-local-link) (get-atom-feed-local-link "all"))
 
     (define/public (index? [tag #f])
       (and (member (metadata-display meta) '("index"))
@@ -546,7 +546,7 @@
         (link ([rel "canonical"] [href ,(get-full-link)]))
         ;; Feeds
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(get-atom-feed-link "all")]))))
+               [href ,(get-atom-feed-local-link "all")]))))
     ))
 
 (define (xexpr->html x) (xexpr->string x))

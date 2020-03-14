@@ -47,7 +47,7 @@
     ;; Util
 
     (define/public (link [path ""]) (build-link #:local? #t (get-base-url) path))
-    (define/public (full-link [path ""]) (build-link (get-base-url) path))
+    (define/public (full-link [path ""]) (build-link #:local? #f (get-base-url) path))
     (define/public (uri-prefix) (get-base-local-link-no-slash))
     ))
 
