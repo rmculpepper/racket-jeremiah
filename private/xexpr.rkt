@@ -10,7 +10,8 @@
          xexpr-map
          xexpr-map*
          xexprs->description
-         xexpr->markdown)
+         xexpr->html
+         xexprs->html)
 
 ;; ============================================================
 ;; HTML Reading
@@ -132,3 +133,9 @@
 (define (kill-newlines s)
   (string-trim #:left? #t #:right? #t #:repeat? #t
                (regexp-replace* "\n+" s " ")))
+
+;; ============================================================
+;; Util
+
+(define (xexpr->html x) (xexpr->string x))
+(define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))

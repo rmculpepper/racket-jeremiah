@@ -9,7 +9,8 @@
          net/url
          markdown
          "../config.rkt"
-         (prefix-in config: "../config.rkt"))
+         (prefix-in config: "../config.rkt")
+         "xexpr.rkt")
 (provide (all-defined-out))
 
 ;; ============================================================
@@ -227,6 +228,7 @@
     (define/public (get-more?) more?)
 
     (define/public (get-title) (metadata-title meta))
+    (define/public (get-title-xexpr) (metadata-title-xexpr meta))
     (define/public (get-author) (metadata-author meta))
     (define/public (get-tags) (metadata-tags meta))
 
@@ -295,7 +297,7 @@
     ;; ----------------------------------------
     ;; Rendering
 
-    (define/public (get-title-html) (title->html (get-title)))
+    (define/public (get-title-html) (xexpr->html (get-title-xexpr)))
     (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
     (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
     (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
@@ -327,19 +329,6 @@
                 [else null])))
     ))
 
-;; FIXME: build should produce separate title-html and title-text
-
-(define (title->html t)
-  ;; `parse-markdown` returns (listof xexpr?). For simple "one-liner"
-  ;; markdown that's usually a list with just a single 'p element. In
-  ;; that case, discard the 'p and use its body element(s). If it
-  ;; parsed to something more complicated, the visual result will
-  ;; probably be unappealing, but at least handle that case here.
-  (define xs (match (parse-markdown t)
-               [`((p () . ,xs)) xs]
-               [xs xs]))
-  (string-join (map xexpr->string xs) ""))
-
 (define (tag->xexpr tag-s)
   `(a ([href ,(get-tag-link tag-s)]) ,tag-s))
 
@@ -349,6 +338,8 @@
 
 ;; Metadata is a hasheq with the following possible keys:
 ;; - 'title : String
+;; - 'title-xexpr : XExpr -- text or span element containing rendered title
+;;       -- Note: cannot be set by header.
 ;; - 'date : String -- should have form "YYYY-MM-DD"
 ;; - 'auxsort : String -- extra stuff (eg time of day) to control sorting
 ;; - 'author : String
@@ -356,14 +347,18 @@
 ;; - 'display : "index" | "draft" | "norender"
 
 ;; Metadata is gathered from the following sources (earlier overrides later):
-;; - header   -- *
-;; - content  -- author, title (only from Scribble)
+;; - header   -- * (except title-xexpr)
+;; - content  -- author, title, title-xexpr (only from Scribble)
 ;; - path     -- date, display
 
 (define reserved-tags '("all" "index" "draft")) ;; FIXME?
 
 (define (metadata-title h)
   (or (hash-ref h 'title #f)
+      (error 'metadata-title "missing title: ~e" h)))
+(define (metadata-title-xexpr h)
+  (or (hash-ref h 'title-xexpr #f)
+      (hash-ref h 'title #f)
       (error 'metadata-title "missing title: ~e" h)))
 (define (metadata-date h)
   (match (hash-ref h 'date #f)
@@ -408,10 +403,3 @@
                      (not (equal? tz "Z"))))
      (seconds->date dsec #f)]
     [_ (error 'string->date/8601 "bad date: ~e" s)]))
-
-
-;; ============================================================
-;; Util
-
-(define (xexpr->html x) (xexpr->string x))
-(define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))

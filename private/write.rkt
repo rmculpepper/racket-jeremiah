@@ -5,9 +5,9 @@
          racket/string
          net/url
          (only-in racket/sequence in-slice)
-         (only-in markdown xexpr->string)
          "../config.rkt"
-         "data.rkt")
+         "data.rkt"
+         "xexpr.rkt")
 (provide (all-defined-out))
 
 ;; ============================================================
@@ -104,7 +104,7 @@
           (post->atom-feed-entry-xexpr post))))
   (string-append 
    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-   (xexpr->string feed-x)))
+   (xexpr->html feed-x)))
 
 ;; post->atom-feed-entry-xexpr : String Post -> XExpr
 (define (post->atom-feed-entry-xexpr post)
@@ -118,7 +118,7 @@
     (content ([type "html"])
              ,(send post get-blurb-html)
              ,(cond [(send post get-more?)
-                     (xexpr->string
+                     (xexpr->html
                       `(a ([href ,(send post get-full-link)])
                           (em "More" hellip)))]
                     [else ""]))))

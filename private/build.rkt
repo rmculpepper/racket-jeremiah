@@ -210,8 +210,7 @@
   (define xexprs
     (with-input-from-file (build-path cachedir SCRIBBLE-OUTFILE)
       read-html-as-xexprs))
-  (define body0 (extract-scribble-body xexprs))
-  (define-values (body scribble-meta-h) (adjust-scribble-html body0))
+  (define-values (body scribble-meta-h) (process-scribble-xexprs xexprs))
   (values body header-meta-h scribble-meta-h))
 
 (define SCRIBBLE-OUTFILE "__index.html")
@@ -239,24 +238,34 @@
 (define (usual-scribble-file? file)
   (member (path->string file) usual-scribble-files))
 
-;; extract-scribble-body : XExprs -> XExprs
-(define (extract-scribble-body xexprs)
+;; process-scribble-xexprs : XExprs -> (values XExprs MetaHash)
+(define (process-scribble-xexprs xexprs)
   ;; Extract the part we care about -- the elements in the "main" div after
   ;; the "versionbox" div. (The `match` might be too fragile way to do this.)
   (match (cadr xexprs)
     [`(html
        ()
-       (head . ,_)
+       (head () . ,head-xs)
        ,(list-no-order
          `(div ([class "maincolumn"])
-               (div ([class "main"]) . ,xs))
+               (div ([class "main"]) . ,main-xs))
          _ ...))
-     xs]
-    [_ (error 'extract-scribble-body "bad scribble output: ~e" xexprs)]))
+     (define meta-h (process-scribble-head head-xs))
+     (adjust-scribble-body main-xs meta-h)]
+    [_ (error 'process-scribble-xexprs "bad scribble output: ~e" xexprs)]))
 
-;; adjust-scribble-html : XExprs -> (values XExprs MetaHash)
-(define (adjust-scribble-html xs)
-  (define meta-h #hash()) ;; mutated
+;; process-scribble-head : XExprs -> MetaHash
+(define (process-scribble-head xexprs)
+  (define meta-h '#hasheq()) ;; MetaHash, mutated
+  (for ([x (in-list xexprs)])
+    (match x
+      [`(title () . ,(list (? string? title-text) ...))
+       (set! meta-h (hash-set meta-h 'title (apply string-append title-text)))]
+      [_ (void)]))
+  meta-h)
+
+;; adjust-scribble-body : XExprs MetaHash -> (values XExprs MetaHash)
+(define (adjust-scribble-body xs meta-h)
   (define xs*
     (xexpr-map*
      (lambda (x _)
@@ -267,8 +276,8 @@
          [`(div ([class "SAuthorListBox"]) . ,_)
           (match x
             [`(div ([class "SAuthorListBox"])
-               (span ([class "SAuthorList"]) . ,_)
-               ,@(list `(p ([class "author"]) ,(? string? authors)) ...))
+                   (span ([class "SAuthorList"]) . ,_)
+                   ,@(list `(p ([class "author"]) ,(? string? authors)) ...))
              (set! meta-h (hash-set meta-h 'author (string-join authors ", ")))]
             [_ (void)])
           '()]
@@ -276,7 +285,7 @@
          [`(h2 . ,_)
           (match x
             [`(h2 () (a . ,_) ,@title-xs)
-             (set! meta-h (hash-set meta-h 'title (xexpr->markdown `(span () ,@title-xs))))]
+             (set! meta-h (hash-set meta-h 'title-xexpr `(span () ,@title-xs)))]
             [_ (void)])
           '()]
          ;; Convert blockquotes (???)
