@@ -54,7 +54,7 @@
 
     ;; Write posts
     (for ([post (in-list posts)] #:when (send post render?))
-      (write-post post (send index get-prev post) (send index get-next post)))
+      (write-post post))
 
     ;; Write main index and feed
     (write-index index)

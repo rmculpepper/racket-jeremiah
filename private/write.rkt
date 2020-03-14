@@ -14,11 +14,11 @@
 ;; ============================================================
 ;; Write Post
 
-;; write-post : Post Post/#f Post/#f -> Void
+;; write-post : Post -> Void
 ;; Note: prev = older, next = newer
-(define (write-post post prev-post next-post)
+(define (write-post post)
   (make-directory* (send post get-out-dir))
-  (define content-html (render-post post prev-post next-post))
+  (define content-html (render-post post))
   (define page-html (render-page post content-html))
   (with-output-to-file (build-path (send post get-out-dir) "index.html")
     #:exists 'replace
@@ -28,9 +28,9 @@
           #:when (not (dont-copy-file? file)))
       (copy-file file (build-path (send post get-out-dir) file)))))
 
-;; render-post : Post Post/#f Post/#f -> String
-(define (render-post post prev-post next-post)
-  ((get-post-renderer) post prev-post next-post))
+;; render-post : Post -> String
+(define (render-post post)
+  ((get-post-renderer) post))
 
 ;; render-page : Page String -> String
 (define (render-page page content-html)
