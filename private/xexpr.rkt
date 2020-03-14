@@ -7,14 +7,14 @@
          xml
          (only-in html read-html-as-xml))
 (provide read-html-as-xexprs
+         xexpr->html
+         xexprs->html
          xexpr-map
          xexpr-map*
-         xexprs->description
-         xexpr->html
-         xexprs->html)
+         xexprs->description)
 
 ;; ============================================================
-;; HTML Reading
+;; HTML
 
 ;; read-html-as-xexprs : -> (Listof XExpr)
 (define (read-html-as-xexprs)
@@ -31,6 +31,9 @@
           (list k (regexp-replace* "&amp;" v "\\&")))
        ,@(map decode-ampersands-in-attributes els))]
     [v v]))
+
+(define (xexpr->html x) (xexpr->string x))
+(define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
 
 
 ;; ============================================================
@@ -133,9 +136,3 @@
 (define (kill-newlines s)
   (string-trim #:left? #t #:right? #t #:repeat? #t
                (regexp-replace* "\n+" s " ")))
-
-;; ============================================================
-;; Util
-
-(define (xexpr->html x) (xexpr->string x))
-(define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
