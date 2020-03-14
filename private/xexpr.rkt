@@ -66,7 +66,7 @@
     [(list e) e]
     [r (error 'xexpr-map "got non-singleton result list: ~e" r)]))
 
-;; xexpr-map : (XExpr (Listof XExpr) -> (Listof XExpr)) (Listof XExpr) -> (Listof XExpr)
+;; xexpr-map* : (XExpr (Listof XExpr) -> (Listof XExpr)) (Listof XExpr) -> (Listof XExpr)
 (define (xexpr-map* f xs)
   (define ((inner ps) x)
     (match x

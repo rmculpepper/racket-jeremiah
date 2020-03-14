@@ -59,11 +59,11 @@
 (define index%
   (class object%
     (init-field tag     ;; String/#f
-                posts)  ;; (Listof PostInfo), sorted most recent first
+                posts)  ;; (Listof Post), sorted most recent first
     (super-new)
 
-    (define prev-h (make-hasheq)) ;; Hasheq[PostInfo => PostInfo/#f]
-    (define next-h (make-hasheq)) ;; Hasheq[PostInfo => PostInfo/#f]
+    (define prev-h (make-hasheq)) ;; Hasheq[Post => Post/#f]
+    (define next-h (make-hasheq)) ;; Hasheq[Post => Post/#f]
     (for ([post (in-list posts)]
           [next-post (in-list (if (pair? posts) (cdr posts) '()))])
       (hash-set! next-h post next-post)
@@ -149,7 +149,7 @@
       (xexpr->string `(footer ,(bootstrap-pagination file-name-base page-num num-pages))))
     ))
 
-;; build-index : String/#f (Listof Postinfo) -> Index
+;; build-index : String/#f (Listof Post) -> Index
 (define (build-index tag posts)
   (define sorted-posts
     (sort (filter (lambda (post)
@@ -163,7 +163,7 @@
 ;; ============================================================
 ;; Write Post
 
-;; write-post : PostInfo PostInfo/#f PostInfo/#f Site -> Void
+;; write-post : Post Post/#f Post/#f Site -> Void
 ;; Note: prev = older, next = newer
 (define (write-post post prev-post next-post site)
   (make-directory* (send post get-out-dir))
@@ -176,7 +176,7 @@
           #:when (not (dont-copy-file? file)))
       (copy-file file (build-path (send post get-out-dir) file)))))
 
-;; render-post : PostInfo PostInfo/#f PostInfo/#f -> String
+;; render-post : Post Post/#f Post/#f -> String
 (define (render-post post prev-post next-post)
   ((get-post-renderer) post prev-post next-post))
 
@@ -282,7 +282,7 @@
    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
    (xexpr->string feed-x)))
 
-;; post->atom-feed-entry-xexpr : String PostInfo -> XExpr
+;; post->atom-feed-entry-xexpr : String Post -> XExpr
 (define (post->atom-feed-entry-xexpr post)
   `(entry
     (title ([type "text"]) ,(send post get-title))

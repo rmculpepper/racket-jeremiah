@@ -73,7 +73,7 @@
     (make-directory* cachedir)
     (build-post path cachedir)))
 
-;; read-post-info : postsrc -> PostInfo
+;; read-post-info : postsrc -> Post
 ;; Reads info about a built post from its cache.
 (define (read-post-info src #:who [who 'read-post-info])
   (match-define (postsrc path name cachedir) src)
@@ -93,7 +93,7 @@
         (unless (boolean? more?)
           (error who "bad more?: ~e" more?))
         (values timestamp meta-h blurb more?))))
-  (new postinfo% (src src) (meta meta) (blurb blurb) (more? more?)))
+  (new post% (src src) (meta meta) (blurb blurb) (more? more?)))
 
 ;; read-cache-timestamp : Path -> (U Nat -inf.0)
 (define (read-cache-timestamp cachedir)
@@ -421,8 +421,8 @@
     get-header-html
     ))
 
-;; PostInfo = instance of postinfo%
-(define postinfo%
+;; Post = instance of post%
+(define post%
   (class* object% (page<%>)
     (init-field src meta blurb more?)
     (super-new)
@@ -484,10 +484,10 @@
 
     (define/public (sortkey) ;; -> String
       (define date (or (metadata-date meta)
-                       (error 'postinfo-sortkey "no date: ~e" (about))))
+                       (error 'post%::sortkey "no date: ~e" (about))))
       (string-append date (metadata-auxsort meta)))
 
-    (define/public (about) (format "(postinfo ~e)" src))
+    (define/public (about) (format "(post ~e)" src))
 
     (define/public (get-body-xexprs)
       (with-input-from-file (build-path (postsrc-cachedir src) "_index.rktd")
@@ -540,7 +540,5 @@
                [href ,(build-link (get-base-url) "feeds/all.atom.xml")]))))
     ))
 
-
-;; FIXME: split out page%, superclass of post% (??)
 (define (xexpr->html x) (xexpr->string x))
 (define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
