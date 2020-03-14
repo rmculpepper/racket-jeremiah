@@ -1,8 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-  @;{ The at-exp reader for a template treats this as a comment.
-      Also, notice the use template variables like @title,
-      @description etc. }
   <head>
     @(send site get-header-html)
     @(send page get-header-html)
@@ -20,7 +17,38 @@
   </head>
   <body>
 
-    @(include-template "nav-template.html")
+    <!-- NAV BAR -->
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+      <div class="container">
+      <a href="@(send site uri-prefix)/index.html" class="navbar-brand">My Blog Brand</a>
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+            @(define (craft-tag-link tag)
+                @list{<a class="dropdown-item" href="@(build-link #:local? #t (get-tag-url tag))">
+                        @(xexpr->html tag)
+                      </a>})
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+
+              <div class="dropdown-menu">
+                @(map craft-tag-link (send site get-tags))
+              </div>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="@(send page get-feed-local-link)">Atom</a>
+            </li>
+          </ul>
+      </div>
+      </div>
+    </nav>
+    <!-- END NAV BAR -->
 
     <div class="container">
       <div class="row">
@@ -51,7 +79,6 @@
         </div>
       </div>
     </div>
-    <!-- </body> JS -->
     <script type="text/javascript" src="@(send site uri-prefix)/js/jquery-3.2.1.slim.min.js"></script>
     <script type="text/javascript" src="@(send site uri-prefix)/js/bootstrap.bundle.min.js"></script>
   </body>

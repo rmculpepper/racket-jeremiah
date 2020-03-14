@@ -3,6 +3,7 @@
          racket/string
          racket/class
          jeremiah/config
+         (only-in jeremiah/private/post xexpr->html)
          net/url
          web-server/templates)
 

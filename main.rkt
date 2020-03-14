@@ -39,28 +39,26 @@
       (delay-exception (build/cache-post src))))
 
   ;; Read metadata from cache, build index
-  (define posts
-    (for/list ([src (in-list srcs)])
-      (read-post-info src)))
-
+  (define posts (map read-post-info srcs))
   (define site (new site% (posts posts)))
   (define index (build-index #f posts))
 
   ;; Delete existing dest-dir
   ;; (delete-directory/files (get-dest-dir))
 
+  ;; Write posts
   (for ([post (in-list posts)] #:when (send post render?))
     (write-post post (send index get-prev post) (send index get-next post) site))
 
-  ;; Write main index
+  ;; Write main index and feed
   (write-index index site)
-
-  ;; Write tag pages
-  ;; FIXME
-
-  ;; Write feeds
   (write-atom-feed index)
-  ;; FIXME
+
+  ;; Write tag indexes and feeds
+  (for ([tag (in-list (send site get-tags))])
+    (define tag-index (build-index tag posts))
+    (write-index tag-index site)
+    (write-atom-feed tag-index))
 
   posts)
 

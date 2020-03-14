@@ -117,6 +117,8 @@
 ;; - content  -- author, title (only from Scribble)
 ;; - path     -- date, display
 
+(define reserved-tags '("all" "index" "draft")) ;; FIXME?
+
 (define (check-metadata h)
   (void (metadata-title h))
   (void (metadata-date h))
@@ -419,6 +421,9 @@
 
     ;; get-header-html : -> String
     get-header-html
+
+    ;; get-feed-local-link : -> String/#f
+    get-feed-local-link
     ))
 
 ;; Post = instance of post%
@@ -476,9 +481,13 @@
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
     (define/public (get-full-link) (url->string (get-url)))
     (define/public (get-local-link) (url->string (local-url (get-url))))
+    (define/public (get-feed-local-link) (get-atom-feed-link "all"))
 
-    (define/public (index?)
-      (member (metadata-display meta) '("index")))
+    (define/public (index? [tag #f])
+      (and (member (metadata-display meta) '("index"))
+           (cond [tag (and (not (member tag reserved-tags))
+                           (and (member tag (get-tags)) #t))]
+                 [else #t])))
     (define/public (render?)
       (member (metadata-display meta) '("index" "draft")))
 
@@ -537,8 +546,36 @@
         (link ([rel "canonical"] [href ,(get-full-link)]))
         ;; Feeds
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(build-link (get-base-url) "feeds/all.atom.xml")]))))
+               [href ,(get-atom-feed-link "all")]))))
     ))
 
 (define (xexpr->html x) (xexpr->string x))
 (define (xexprs->html xs) (string-join (map xexpr->string xs) "\n"))
+
+
+;; ============================================================
+;; Write Post
+
+;; write-post : Post Post/#f Post/#f Site -> Void
+;; Note: prev = older, next = newer
+(define (write-post post prev-post next-post site)
+  (make-directory* (send post get-out-dir))
+  (define content-html (render-post post prev-post next-post))
+  (define page-html (render-page post content-html site))
+  (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
+    (lambda () (write-string page-html)))
+  (parameterize ((current-directory (send post get-cachedir)))
+    (for ([file (in-list (find-files file-exists?))]
+          #:when (not (dont-copy-file? file)))
+      (copy-file file (build-path (send post get-out-dir) file)))))
+
+;; render-post : Post Post/#f Post/#f -> String
+(define (render-post post prev-post next-post)
+  ((get-post-renderer) post prev-post next-post))
+
+;; render-page : Page String Site -> String
+(define (render-page page content-html site)
+  ((get-page-renderer) page content-html site))
+
+(define (dont-copy-file? path)
+  (regexp-match? #rx"^_" (path->string (file-name-from-path path))))

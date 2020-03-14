@@ -124,7 +124,7 @@
 
     (define/public (get-url)
       (let ([tag (send index get-tag)])
-        (cond [tag (build-url (get-tags-url) (get-dest-file))]
+        (cond [tag (build-url (get-tags-url) (get-dest-file-name))]
               [else (build-url (get-base-url) (get-dest-file-name))])))
     (define/public (get-local-link)
       (build-link #:local? #t (get-url)))
@@ -132,7 +132,7 @@
     (define/public (get-page-url) (get-url))
     (define/public (get-page-local-link) (get-local-link))
 
-    (define/public (get-enc-feed-local-link)
+    (define/public (get-feed-local-link)
       (send index get-feed-local-link))
 
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
@@ -152,40 +152,11 @@
 ;; build-index : String/#f (Listof Post) -> Index
 (define (build-index tag posts)
   (define sorted-posts
-    (sort (filter (lambda (post)
-                    (and (send post index?)
-                         (if tag (member tag (send post get-tags)) #t)))
-                  posts)
+    (sort (filter (lambda (post) (send post index? tag)) posts)
           string>?
           #:key (lambda (post) (send post sortkey))))
   (new index% (tag tag) (posts sorted-posts)))
 
-;; ============================================================
-;; Write Post
-
-;; write-post : Post Post/#f Post/#f Site -> Void
-;; Note: prev = older, next = newer
-(define (write-post post prev-post next-post site)
-  (make-directory* (send post get-out-dir))
-  (define content-html (render-post post prev-post next-post))
-  (define page-html (render-page post content-html site))
-  (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
-    (lambda () (write-string page-html)))
-  (parameterize ((current-directory (send post get-cachedir)))
-    (for ([file (in-list (find-files file-exists?))]
-          #:when (not (dont-copy-file? file)))
-      (copy-file file (build-path (send post get-out-dir) file)))))
-
-;; render-post : Post Post/#f Post/#f -> String
-(define (render-post post prev-post next-post)
-  ((get-post-renderer) post prev-post next-post))
-
-;; render-page : Page String Site -> String
-(define (render-page page content-html site)
-  ((get-page-renderer) page content-html site))
-
-(define (dont-copy-file? path)
-  (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
 
 ;; ============================================================
 ;; Write Index
@@ -208,6 +179,7 @@
       (render-index-entry post)))
   (define content-html (string-join rendered-posts "\n"))
   (define page-html (render-page index-page content-html site))
+  (make-parent-directory* (send index-page get-dest-file))
   (with-output-to-file (send index-page get-dest-file)
     #:exists 'replace
     (lambda () (write-string page-html))))
@@ -249,8 +221,6 @@
 ;; References:
 ;; - https://validator.w3.org/feed/docs/atom.html
 ;; - https://tools.ietf.org/html/rfc4287
-
-(define reserved-tags '("all" "index" "draft")) ;; FIXME?
 
 ;; write-atom-feed : Index -> Void
 (define (write-atom-feed index)
