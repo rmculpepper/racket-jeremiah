@@ -65,7 +65,7 @@
     (make-directory* cachedir)
     (build-post path cachedir)))
 
-;; read-post-info : postsrc -> Post
+;; read-post-info : PostSrc -> (values Meta XExprs Boolean)
 ;; Reads info about a built post from its cache.
 (define (read-post-info src #:who [who 'read-post-info])
   (match-define (postsrc path name cachedir) src)
@@ -85,7 +85,7 @@
         (unless (boolean? more?)
           (error who "bad more?: ~e" more?))
         (values timestamp meta-h blurb more?))))
-  (new post% (src src) (meta meta) (blurb blurb) (more? more?)))
+  (values meta blurb more?))
 
 ;; read-cache-timestamp : Path -> (U Nat -inf.0)
 (define (read-cache-timestamp cachedir)
@@ -332,14 +332,3 @@
         (define body-xs (cddr (read-html-as-xexprs in)))
         (values meta-h body-xs))))
   (values body-xs meta-h '#hasheq()))
-
-;; ============================================================
-;; Building Indexes
-
-;; build-index : String/#f (Listof Post) -> Index
-(define (build-index tag posts)
-  (define sorted-posts
-    (sort (filter (lambda (post) (send post index? tag)) posts)
-          string>?
-          #:key (lambda (post) (send post sortkey))))
-  (new index% (tag tag) (posts sorted-posts)))

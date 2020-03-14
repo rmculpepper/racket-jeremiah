@@ -32,34 +32,14 @@
         (hash-set! h tag #t))
       (sort (hash-keys h) string<?))
 
+    (define/public (get-prev-post post) (send index get-prev post))
+    (define/public (get-next-post post) (send index get-next post))
+
     ;; ----------------------------------------
     ;; Utils for site.rkt and templates
 
     (define/public (link . paths) (apply build-link #:local? #t (get-base-url) paths))
     (define/public (full-link . paths) (apply build-link #:local? #f (get-base-url) paths))
-    ))
-
-;; ============================================================
-;; Pages
-
-(define page<%>
-  (interface ()
-    ;; get-page-type : -> (U 'post 'index ...)
-    get-page-type
-
-    ;; These may point to a directory with an index.html file.
-    get-url
-    get-link
-
-    ;; These refer specifically to page's HTML file.
-    get-page-url
-    get-page-link
-
-    ;; get-header-html : Index -> String
-    get-header-html
-
-    ;; get-feed-link : -> String/#f
-    get-feed-link
     ))
 
 
@@ -114,14 +94,13 @@
 
 ;; IndexPage = instance of index-page%
 (define index-page%
-  (class* object% (page<%>)
+  (class object%
     (init-field index           ;; Index
                 posts           ;; (Listof Post)
                 page-num        ;; Nat
                 num-pages)      ;; Nat
     (super-new)
 
-    (define/public (get-page-type) 'index)
     (define/public (get-tag) (send index get-tag))
 
     (define/public (get-index) index)
@@ -152,57 +131,11 @@
 
     (define/public (get-feed-link)
       (send index get-feed-link))
-
-    ;; ----------------------------------------
-    ;; Rendering
-
-    (define/public (get-header-html _site)
-      (xexprs->html (get-header-xexprs _site)))
-    (define/public (get-header-xexprs _site)
-      (define tag (send index get-tag))
-      `((title ,(send index get-title))
-        ;; (meta ([name "description"] [content ""])) ;; FIXME
-        ,@(if tag (list `(meta ([name "keywords"] [content ,tag]))) '())
-        (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(send index get-feed-link)]))
-
-        ,@(cond [(zero? page-num) null]
-                [else (list `(link ([rel "prev"] [href ,(get-link (sub1 page-num))])))])
-        ,@(cond [(= page-num (sub1 num-pages)) null]
-                [else (list `(link ([rel "next"] [href ,(get-link (add1 page-num))])))])
-        ))
-
-    (define/public (get-pagination-html)
-      (define file-name-base (send index get-tag-dest-file-name-base))
-      (xexpr->string `(footer ,(bootstrap-pagination file-name-base page-num num-pages))))
     ))
 
 (define (file/page file-name-base page-num)
   (cond [(zero? page-num) (format "~a.html" file-name-base)]
         [else (format "~a-~a.html" file-name-base page-num)]))
-
-(define (bootstrap-pagination file-name-base page-num num-pages)
-  `(ul ([class "pagination"])
-       ,(cond [(zero? page-num)
-               `(li ([class "page-item disabled"])
-                    (a ([class "page-link"] [href "#"]) 'larr))]
-              [else
-               `(li ([class "page-item"])
-                    (a ([class "page-link"]
-                        [href ,(file/page file-name-base (sub1 page-num))])
-                       'larr))])
-       ,@(for/list ([n (in-range num-pages)])
-           `(li ([class ,(cond [(= n page-num) "page-item active"] [else "page-item"])])
-                (a ([class "page-link"]
-                    [href ,(file/page file-name-base n)])
-                   ,(number->string (add1 n)))))
-       ,(cond [(= (add1 page-num) num-pages)
-               `(li ([class "page-item disabled"])
-                    (a ([class "page-link"] [href "#"]) 'rarr))]
-              [else `(li ([class "page-item"])
-                         (a ([class "page-link"]
-                             [href ,(file/page file-name-base (add1 page-num))])
-                            'rarr))])))
 
 
 ;; ============================================================
@@ -216,11 +149,9 @@
 
 ;; Post = instance of post%
 (define post%
-  (class* object% (page<%>)
+  (class object%
     (init-field src meta blurb more?)
     (super-new)
-
-    (define/public (get-page-type) 'post)
 
     (define/public (get-src) src)
     (define/public (get-meta) meta)
@@ -292,44 +223,7 @@
     (define/public (get-full-link) (url->string (get-url)))
     (define/public (get-link) (url->string (local-url (get-url))))
     (define/public (get-feed-link) (get-atom-feed-link "all"))
-
-    ;; ----------------------------------------
-    ;; Rendering
-
-    (define/public (get-title-html) (xexpr->html (get-title-xexpr)))
-    (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
-    (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
-    (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
-    (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
-    (define/public (get-header-html site) (xexprs->html (get-header-xexprs site)))
-
-    (define/public (get-date-xexpr)
-      (let ([d (get-date)]) `(time ([datetime ,d] [pubdate "true"]) ,d)))
-
-    (define/public (get-tags-xexpr)
-      `(span ([class "tags"]) ,@(add-between (map tag->xexpr (get-tags)) ", ")))
-
-    (define/public (get-header-xexprs site)
-      `((title ,(get-title))
-        (meta ([name "description"] [content ""])) ;; FIXME
-        ;;(meta ([name "author"] [content ,(get-authors)])) ;; FIXME
-        (meta ([name "keywords"] [content ,(string-join (get-tags) ",")]))
-        (link ([rel "canonical"] [href ,(get-full-link)]))
-        (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(get-atom-feed-link "all")]))
-
-        ,@(cond [(send (send site get-index) get-prev this)
-                 => (lambda (prev)
-                      (list `(link ([rel "prev"] [href ,(send prev get-link)]))))]
-                [else null])
-        ,@(cond [(send (send site get-index) get-next this)
-                 => (lambda (next)
-                      (list `(link ([rel "next"] [href ,(send next get-link)]))))]
-                [else null])))
     ))
-
-(define (tag->xexpr tag-s)
-  `(a ([href ,(get-tag-link tag-s)]) ,tag-s))
 
 
 ;; ============================================================

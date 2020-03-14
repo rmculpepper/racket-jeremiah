@@ -7,6 +7,7 @@
          (only-in racket/sequence in-slice)
          "../config.rkt"
          "data.rkt"
+         "render.rkt"
          "xexpr.rkt")
 (provide (all-defined-out))
 
@@ -49,7 +50,7 @@
   (for ([page-num (in-range num-pages)]
         [page-posts (in-slice (site-posts-per-page) posts)])
     (define index-page
-      (new index-page% (index index) (posts page-posts)
+      (new render-index-page% (index index) (posts page-posts)
            (page-num page-num) (num-pages num-pages)))
     (write-index-page index-page site)))
 
@@ -57,8 +58,7 @@
   (define rendered-posts
     (for/list ([post (in-list (send index-page get-posts))])
       (render-index-entry post)))
-  (define pagination-html (send index-page get-pagination-html))
-  (define content-html (string-join (append rendered-posts (list pagination-html)) "\n"))
+  (define content-html (string-join rendered-posts "\n"))
   (define page-html (render-page index-page content-html site))
   (make-parent-directory* (send index-page get-dest-file))
   (with-output-to-file (send index-page get-dest-file)

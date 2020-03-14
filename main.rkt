@@ -5,6 +5,7 @@
          "util.rkt"
          "private/data.rkt"
          "private/build.rkt"
+         "private/render.rkt"
          "private/write.rkt")
 
 ;; ----------------------------------------
@@ -33,7 +34,7 @@
       (delay-exception (build/cache-post src))))
 
   ;; Read metadata from cache, build index
-  (define posts (map read-post-info srcs))
+  (define posts (map read-post srcs))
   (define index (build-index #f posts))
   (define site (new site% (index index)))
 
@@ -76,6 +77,20 @@
                    (j-error "duplicate post name\n  path: ~e\n  previous path: ~e"
                             (postsrc-path src) (postsrc-path prev-src)))]
              [else (hash-set! seen (postsrc-name src) src)])))))
+
+;; read-post : PostSrc -> Post
+(define (read-post src #:who [who 'read-post])
+  (define-values (meta blurb more?) (read-post-info src #:who who))
+  (new render-post% (src src) (meta meta) (blurb blurb) (more? more?)))
+
+;; build-index : String/#f (Listof Post) -> Index
+(define (build-index tag posts)
+  (define sorted-posts
+    (sort (filter (lambda (post) (send post index? tag)) posts)
+          string>?
+          #:key (lambda (post) (send post sortkey))))
+  (new index% (tag tag) (posts sorted-posts)))
+
 
 ;; ----------------------------------------
 (require racket/lazy-require)
