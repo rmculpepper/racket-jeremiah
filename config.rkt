@@ -11,7 +11,7 @@
 ;; "url" refers to instances of the net/url struct, and "link" refers to the
 ;; string representation of a URL. A url or link can be "full" (includes scheme
 ;; and host) or "local" (no scheme or host, but absolute path including
-;; prefix). If "local" is not specified, "full" is implicit. A "rel-www" is like
+;; prefix). If "full" is not specified, "local" is implicit. A "rel-www" is like
 ;; a local link with the prefix removed (and no initial "/").
 
 ;; Examples:
@@ -73,13 +73,13 @@
 (define-get-url (get-tag-url tag) "tags" (format "~a.html" (slug tag)))
 (define-get-url (get-atom-feed-url tag) "feeds" (format "~a.atom.xml" (slug tag)))
 
-(define (get-base-local-link-no-slash #:who [who 'get-base-link-no-slash])
+(define (get-base-link-no-slash #:who [who 'get-base-link-no-slash])
   (no-end-/ (url->string (local-url (get-base-url #:who who)))))
 
 (define (get-tag-full-link tag) (url->string (get-tag-url tag)))
-(define (get-tag-local-link tag) (url->string (local-url (get-tag-url tag))))
+(define (get-tag-link tag) (url->string (local-url (get-tag-url tag))))
 (define (get-atom-feed-full-link tag) (url->string (get-atom-feed-url tag)))
-(define (get-atom-feed-local-link tag) (url->string (local-url (get-atom-feed-url tag))))
+(define (get-atom-feed-link tag) (url->string (local-url (get-atom-feed-url tag))))
 
 ;; URL utils
 
@@ -91,12 +91,12 @@
     [_ (error who "cannot convert to local URL: ~e" u)]))
 
 ;; build-url : URL String ... -> URL
-(define (build-url base #:local? [local? #f] . paths)
+(define (build-url base . paths)
   (define (trim-final-/ pps)
     (cond [(and (pair? pps) (match (last pps) [(path/param "" '()) #t] [_ #f]))
            (drop-right pps 1)]
           [else pps]))
-  (match (if local? (local-url base) base)
+  (match base
     [(url scheme user host post #t pps '() #f)
      (define new-pps
        (for*/list ([path (in-list paths)] [part (in-list (regexp-split #rx"/" path))])
@@ -105,9 +105,10 @@
      (url scheme user host post #t pps* '() #f)]))
 
 ;; build-link : URL/String String ... -> String
-(define (build-link base #:local? [local? #f] . paths)
-  (let ([base (if (url? base) base (string->url base))])
-    (url->string (apply build-url base paths #:local? local?))))
+(define (build-link base #:local? [local? #t] . paths)
+  (let* ([base (if (url? base) base (string->url base))]
+         [base (if local? (local-url base) base)])
+    (url->string (apply build-url base paths))))
 
 ;; no-end-/ : String -> String
 (define (no-end-/ str) (regexp-replace #rx"/$" str ""))

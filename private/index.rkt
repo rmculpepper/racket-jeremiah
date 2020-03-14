@@ -46,9 +46,9 @@
 
     ;; Util
 
-    (define/public (link [path ""]) (build-link #:local? #t (get-base-url) path))
-    (define/public (full-link [path ""]) (build-link #:local? #f (get-base-url) path))
-    (define/public (uri-prefix) (get-base-local-link-no-slash))
+    (define/public (link . paths) (apply build-link #:local? #t (get-base-url) paths))
+    (define/public (full-link . paths) (apply build-link #:local? #f (get-base-url) paths))
+    (define/public (uri-prefix) (get-base-link-no-slash))
     ))
 
 
@@ -86,7 +86,7 @@
       (build-path (get-feeds-dest-dir) (get-feed-file-name)))
     (define/public (get-feed-url)
       (build-url (get-feeds-url) (get-feed-file-name)))
-    (define/public (get-feed-local-link)
+    (define/public (get-feed-link)
       (url->string (local-url (get-feed-url))))
 
     (define/public (get-tag-url) ;; no tag => base url (implicit /index.html)
@@ -127,14 +127,14 @@
       (let ([tag (send index get-tag)])
         (cond [tag (build-url (get-tags-url) (get-dest-file-name))]
               [else (build-url (get-base-url) (get-dest-file-name))])))
-    (define/public (get-local-link)
+    (define/public (get-link)
       (build-link #:local? #t (get-url)))
 
     (define/public (get-page-url) (get-url))
-    (define/public (get-page-local-link) (get-local-link))
+    (define/public (get-page-link) (get-link))
 
-    (define/public (get-feed-local-link)
-      (send index get-feed-local-link))
+    (define/public (get-feed-link)
+      (send index get-feed-link))
 
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
     (define/public (get-header-xexprs)
@@ -143,7 +143,7 @@
         ;; (meta ([name "description"] [content ""])) ;; FIXME
         ,@(if tag (list `(meta ([name "keywords"] [content ,tag]))) '())
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(send index get-feed-local-link)]))))
+               [href ,(send index get-feed-link)]))))
 
     (define/public (get-pagination-html)
       (define file-name-base (send index get-tag-dest-file-name-base))

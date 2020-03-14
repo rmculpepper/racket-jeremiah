@@ -413,17 +413,17 @@
 
     ;; These may point to a directory with an index.html file.
     get-url
-    get-local-link
+    get-link
 
     ;; These refer specifically to page's HTML file.
     get-page-url
-    get-page-local-link
+    get-page-link
 
     ;; get-header-html : -> String
     get-header-html
 
-    ;; get-feed-local-link : -> String/#f
-    get-feed-local-link
+    ;; get-feed-link : -> String/#f
+    get-feed-link
     ))
 
 ;; Post = instance of post%
@@ -475,13 +475,13 @@
                          #;[#rx"{filename}",filename])))
 
     (define/public (get-page-url) (build-url (get-url) "index.html"))
-    (define/public (get-page-local-link) (build-link #:local? #t (get-page-url)))
+    (define/public (get-page-link) (build-link #:local? #t (get-page-url)))
 
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
     (define/public (get-full-link) (url->string (get-url)))
-    (define/public (get-local-link) (url->string (local-url (get-url))))
-    (define/public (get-feed-local-link) (get-atom-feed-local-link "all"))
+    (define/public (get-link) (url->string (local-url (get-url))))
+    (define/public (get-feed-link) (get-atom-feed-link "all"))
 
     (define/public (index? [tag #f])
       (and (member (metadata-display meta) '("index"))
@@ -532,7 +532,7 @@
                    [xs xs]))
       (string-join (map xexpr->string xs) ""))
     (define/public (tag->xexpr tag-s)
-      `(a ([href ,(get-tag-local-link tag-s)]) ,tag-s))
+      `(a ([href ,(get-tag-link tag-s)]) ,tag-s))
 
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
     (define/public (get-header-xexprs)
@@ -546,7 +546,7 @@
         (link ([rel "canonical"] [href ,(get-full-link)]))
         ;; Feeds
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(get-atom-feed-local-link "all")]))))
+               [href ,(get-atom-feed-link "all")]))))
     ))
 
 (define (xexpr->html x) (xexpr->string x))

@@ -6,8 +6,8 @@
 
     @;{ FIXME FIXME
     @(let ()
-       (define rel-next (and next-post (send next-post get-local-link)))
-       (define rel-prev (and prev-post (send prev-post get-local-link)))
+       (define rel-next (and next-post (send next-post get-link)))
+       (define rel-prev (and prev-post (send prev-post get-link)))
        @list{
          @(when rel-next @list{<link rel="next" href="@|rel-next|">})
          @(when rel-prev @list{<link rel="prev" href="@|rel-prev|">})
@@ -42,7 +42,7 @@
               </div>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="@(send page get-feed-local-link)">Atom</a>
+              <a class="nav-link" href="@(send page get-feed-link)">Atom</a>
             </li>
           </ul>
       </div>

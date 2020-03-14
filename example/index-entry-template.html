@@ -1,12 +1,12 @@
 <article>
   <header>
-    <h2><a href='@(send post get-local-link)'>@(send post get-title-html)</a></h2>
+    <h2><a href='@(send post get-link)'>@(send post get-title-html)</a></h2>
     <p class='date-and-tags'>@(send post get-date) :: @(string-join (send post get-tags) ", ")</p>
     @;{ <p class='authors'>By: @|(send post get-author)|</p> }
   </header>
   @(send post get-blurb-html)
   @(when (send post get-more?)
     @list{<footer>
-            <a href='@(send post get-local-link)'>&hellip; more &hellip;</a>
+            <a href='@(send post get-link)'>&hellip; more &hellip;</a>
           </footer>})
 </article>
