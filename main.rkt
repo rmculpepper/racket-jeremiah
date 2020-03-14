@@ -34,8 +34,8 @@
 
   ;; Read metadata from cache, build index
   (define posts (map read-post-info srcs))
-  (define site (new site% (posts posts)))
   (define index (build-index #f posts))
+  (define site (new site% (index index)))
 
   ;; Delete existing dest-dir
   ;; (delete-directory/files (get-dest-dir))

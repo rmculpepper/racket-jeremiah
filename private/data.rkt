@@ -17,14 +17,14 @@
 
 (define site%
   (class object%
-    (init-field posts)
+    (init-field index)
     (super-new)
 
-    (define/public (get-posts) posts)
+    (define/public (get-index) index)
 
     (define/public (get-tags)
       (define h (make-hash))
-      (for ([post (in-list posts)]
+      (for ([post (in-list (send index get-posts))]
             #:when (send post index?)
             [tag (in-list (send post get-tags))]
             #:when (not (member tag reserved-tags)))
@@ -54,7 +54,7 @@
     get-page-url
     get-page-link
 
-    ;; get-header-html : -> String
+    ;; get-header-html : Index -> String
     get-header-html
 
     ;; get-feed-link : -> String/#f
@@ -134,17 +134,17 @@
     ;; ----------------------------------------
     ;; Paths and URLs
 
-    (define/public (get-dest-file-name)
-      (file/page (send index get-tag-dest-file-name-base) page-num))
+    (define/public (get-dest-file-name [n page-num])
+      (file/page (send index get-tag-dest-file-name-base) n))
     (define/public (get-dest-file)
       (build-path (send index get-tag-dest-dir) (get-dest-file-name)))
 
-    (define/public (get-url)
+    (define/public (get-url [n page-num])
       (let ([tag (send index get-tag)])
-        (cond [tag (build-url (get-tags-url) (get-dest-file-name))]
-              [else (build-url (get-base-url) (get-dest-file-name))])))
-    (define/public (get-link)
-      (build-link #:local? #t (get-url)))
+        (cond [tag (build-url (get-tags-url) (get-dest-file-name n))]
+              [else (build-url (get-base-url) (get-dest-file-name n))])))
+    (define/public (get-link [n page-num])
+      (build-link #:local? #t (get-url n)))
 
     (define/public (get-page-url) (get-url))
     (define/public (get-page-link) (get-link))
@@ -155,14 +155,21 @@
     ;; ----------------------------------------
     ;; Rendering
 
-    (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
-    (define/public (get-header-xexprs)
+    (define/public (get-header-html _site)
+      (xexprs->html (get-header-xexprs _site)))
+    (define/public (get-header-xexprs _site)
       (define tag (send index get-tag))
       `((title ,(send index get-title))
         ;; (meta ([name "description"] [content ""])) ;; FIXME
         ,@(if tag (list `(meta ([name "keywords"] [content ,tag]))) '())
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(send index get-feed-link)]))))
+               [href ,(send index get-feed-link)]))
+
+        ,@(cond [(zero? page-num) null]
+                [else (list `(link ([rel "prev"] [href ,(get-link (sub1 page-num))])))])
+        ,@(cond [(= page-num (sub1 num-pages)) null]
+                [else (list `(link ([rel "next"] [href ,(get-link (add1 page-num))])))])
+        ))
 
     (define/public (get-pagination-html)
       (define file-name-base (send index get-tag-dest-file-name-base))
@@ -293,7 +300,7 @@
     (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
     (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
     (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
-    (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
+    (define/public (get-header-html site) (xexprs->html (get-header-xexprs site)))
 
     (define/public (get-date-xexpr)
       (let ([d (get-date)]) `(time ([datetime ,d] [pubdate "true"]) ,d)))
@@ -301,14 +308,23 @@
     (define/public (get-tags-xexpr)
       `(span ([class "tags"]) ,@(add-between (map tag->xexpr (get-tags)) ", ")))
 
-    (define/public (get-header-xexprs)
+    (define/public (get-header-xexprs site)
       `((title ,(get-title))
         (meta ([name "description"] [content ""])) ;; FIXME
         ;;(meta ([name "author"] [content ,(get-authors)])) ;; FIXME
         (meta ([name "keywords"] [content ,(string-join (get-tags) ",")]))
         (link ([rel "canonical"] [href ,(get-full-link)]))
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(get-atom-feed-link "all")]))))
+               [href ,(get-atom-feed-link "all")]))
+
+        ,@(cond [(send (send site get-index) get-prev this)
+                 => (lambda (prev)
+                      (list `(link ([rel "prev"] [href ,(send prev get-link)]))))]
+                [else null])
+        ,@(cond [(send (send site get-index) get-next this)
+                 => (lambda (next)
+                      (list `(link ([rel "next"] [href ,(send next get-link)]))))]
+                [else null])))
     ))
 
 ;; FIXME: build should produce separate title-html and title-text

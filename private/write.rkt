@@ -57,7 +57,8 @@
   (define rendered-posts
     (for/list ([post (in-list (send index-page get-posts))])
       (render-index-entry post)))
-  (define content-html (string-join rendered-posts "\n"))
+  (define pagination-html (send index-page get-pagination-html))
+  (define content-html (string-join (append rendered-posts (list pagination-html)) "\n"))
   (define page-html (render-page index-page content-html site))
   (make-parent-directory* (send index-page get-dest-file))
   (with-output-to-file (send index-page get-dest-file)
