@@ -186,7 +186,7 @@
 
 (define (more-xexpr? x)
   (match x
-    [`(!HTML-COMMENT () ,(pregexp "more")) #t]
+    ['(div ([class "more-content-separator"])) #t]
     [_ #f]))
 
 (define (enhance-body xs)
@@ -301,7 +301,8 @@
          [`(h5 . ,x) `[(h4 ,@x)]]
          [`(h6 . ,x) `[(h5 ,@x)]]
          ;; Turn <!--more--> into html comment
-         [`(p () "<" "!" ndash " more " ndash ">") `[(!HTML-COMMENT () "more")]]
+         [`(p () "<" "!" ndash " more " ndash ">")
+          '[(div ([class "more-content-separator"]))]]
          [x (list x)]))
      xs))
   (values xs* meta-h))
