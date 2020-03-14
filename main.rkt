@@ -4,8 +4,8 @@
          "config.rkt"
          "util.rkt"
          "private/data.rkt"
-         "private/post.rkt"
-         "private/index.rkt")
+         "private/build.rkt"
+         "private/write.rkt")
 
 ;; ----------------------------------------
 

@@ -1,23 +1,41 @@
 #lang racket/base
-(require racket/match
-         racket/class
+(require racket/class
          racket/file
+         racket/path
          racket/string
          net/url
          (only-in racket/sequence in-slice)
          (only-in markdown xexpr->string)
          "../config.rkt"
-         "post.rkt"
          "data.rkt")
 (provide (all-defined-out))
 
-;; build-index : String/#f (Listof Post) -> Index
-(define (build-index tag posts)
-  (define sorted-posts
-    (sort (filter (lambda (post) (send post index? tag)) posts)
-          string>?
-          #:key (lambda (post) (send post sortkey))))
-  (new index% (tag tag) (posts sorted-posts)))
+;; ============================================================
+;; Write Post
+
+;; write-post : Post Post/#f Post/#f Site -> Void
+;; Note: prev = older, next = newer
+(define (write-post post prev-post next-post site)
+  (make-directory* (send post get-out-dir))
+  (define content-html (render-post post prev-post next-post))
+  (define page-html (render-page post content-html site))
+  (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
+    (lambda () (write-string page-html)))
+  (parameterize ((current-directory (send post get-cachedir)))
+    (for ([file (in-list (find-files file-exists?))]
+          #:when (not (dont-copy-file? file)))
+      (copy-file file (build-path (send post get-out-dir) file)))))
+
+;; render-post : Post Post/#f Post/#f -> String
+(define (render-post post prev-post next-post)
+  ((get-post-renderer) post prev-post next-post))
+
+;; render-page : Page String Site -> String
+(define (render-page page content-html site)
+  ((get-page-renderer) page content-html site))
+
+(define (dont-copy-file? path)
+  (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
 
 
 ;; ============================================================

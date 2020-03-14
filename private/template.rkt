@@ -1,6 +1,5 @@
 #lang racket/base
-(require (for-syntax racket/base)
-         racket/path
+(require racket/path
          racket/dict
          web-server/templates
          jeremiah/config)
