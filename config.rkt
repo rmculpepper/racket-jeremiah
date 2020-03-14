@@ -178,3 +178,11 @@
 (define index-entry-renderer (make-parameter #f))
 (define (get-index-entry-renderer)
   (or (index-entry-renderer) (error 'get-index-entry-renderer "not set")))
+
+;; ============================================================
+;; Write phase state
+
+;; During the write phase, the following parameters are set so that
+;; renderers and templates can use them.
+
+(define the-site (make-parameter #f)) ;; site%

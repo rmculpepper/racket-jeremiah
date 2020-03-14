@@ -38,33 +38,35 @@
   (define index (build-index #f posts))
   (define site (new site% (index index)))
 
-  ;; Delete existing dest-dir
-  ;; (delete-directory/files (get-dest-dir))
+  (parameterize ((the-site site))
 
-  ;; Copy static resources
-  (parameterize ((current-directory (get-static-src-dir)))
-    (for ([file (in-list (find-files file-exists?))])
-      (define src-file (build-path (get-static-src-dir) file))
-      (define dest-file (build-path (get-dest-dir) file))
-      (make-parent-directory* dest-file)
-      (when (file-exists? dest-file) (delete-file dest-file))
-      (copy-file src-file dest-file)))
+    ;; Delete existing dest-dir
+    ;; (delete-directory/files (get-dest-dir))
 
-  ;; Write posts
-  (for ([post (in-list posts)] #:when (send post render?))
-    (write-post post (send index get-prev post) (send index get-next post) site))
+    ;; Copy static resources
+    (parameterize ((current-directory (get-static-src-dir)))
+      (for ([file (in-list (find-files file-exists?))])
+        (define src-file (build-path (get-static-src-dir) file))
+        (define dest-file (build-path (get-dest-dir) file))
+        (make-parent-directory* dest-file)
+        (when (file-exists? dest-file) (delete-file dest-file))
+        (copy-file src-file dest-file)))
 
-  ;; Write main index and feed
-  (write-index index site)
-  (write-atom-feed index)
+    ;; Write posts
+    (for ([post (in-list posts)] #:when (send post render?))
+      (write-post post (send index get-prev post) (send index get-next post)))
 
-  ;; Write tag indexes and feeds
-  (for ([tag (in-list (send site get-tags))])
-    (define tag-index (build-index tag posts))
-    (write-index tag-index site)
-    (write-atom-feed tag-index))
+    ;; Write main index and feed
+    (write-index index)
+    (write-atom-feed index)
 
-  posts)
+    ;; Write tag indexes and feeds
+    (for ([tag (in-list (send site get-tags))])
+      (define tag-index (build-index tag posts))
+      (write-index tag-index)
+      (write-atom-feed tag-index))
+
+    posts))
 
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
 (define (check-duplicate-post-src srcs)

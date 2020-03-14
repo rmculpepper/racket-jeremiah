@@ -14,13 +14,14 @@
 ;; ============================================================
 ;; Write Post
 
-;; write-post : Post Post/#f Post/#f Site -> Void
+;; write-post : Post Post/#f Post/#f -> Void
 ;; Note: prev = older, next = newer
-(define (write-post post prev-post next-post site)
+(define (write-post post prev-post next-post)
   (make-directory* (send post get-out-dir))
   (define content-html (render-post post prev-post next-post))
-  (define page-html (render-page post content-html site))
-  (with-output-to-file (build-path (send post get-out-dir) "index.html") #:exists 'replace
+  (define page-html (render-page post content-html))
+  (with-output-to-file (build-path (send post get-out-dir) "index.html")
+    #:exists 'replace
     (lambda () (write-string page-html)))
   (parameterize ((current-directory (send post get-cachedir)))
     (for ([file (in-list (find-files file-exists?))]
@@ -31,9 +32,9 @@
 (define (render-post post prev-post next-post)
   ((get-post-renderer) post prev-post next-post))
 
-;; render-page : Page String Site -> String
-(define (render-page page content-html site)
-  ((get-page-renderer) page content-html site))
+;; render-page : Page String -> String
+(define (render-page page content-html)
+  ((get-page-renderer) page content-html))
 
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
@@ -42,8 +43,8 @@
 ;; ============================================================
 ;; Write Index
 
-;; write-index : Index Site -> Void
-(define (write-index index site)
+;; write-index : Index -> Void
+(define (write-index index)
   (define posts (send index get-posts))
   (define num-posts (length posts))
   (define num-pages (ceiling (/ num-posts (site-posts-per-page))))
@@ -52,14 +53,14 @@
     (define index-page
       (new render-index-page% (index index) (posts page-posts)
            (page-num page-num) (num-pages num-pages)))
-    (write-index-page index-page site)))
+    (write-index-page index-page)))
 
-(define (write-index-page index-page site)
+(define (write-index-page index-page)
   (define rendered-posts
     (for/list ([post (in-list (send index-page get-posts))])
       (render-index-entry post)))
   (define content-html (string-join rendered-posts "\n"))
-  (define page-html (render-page index-page content-html site))
+  (define page-html (render-page index-page content-html))
   (make-parent-directory* (send index-page get-dest-file))
   (with-output-to-file (send index-page get-dest-file)
     #:exists 'replace
