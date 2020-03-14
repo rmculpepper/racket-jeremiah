@@ -17,7 +17,7 @@
                 this page's @|uri-path| is the same as the nav link. }
 
             @(define (ni uri label [a-attribs ""])
-              (define uri-path (send page get-enc-local-url)) ;; FIXME
+              (define uri-path (send page get-local-enc-url)) ;; FIXME
               @list{
                 <li@(when (string-ci=? uri uri-path) " class=\"active\"")>
                   <a class="nav-link" href="@|uri|"@|a-attribs|>@|label|</a>

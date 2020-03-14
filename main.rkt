@@ -44,7 +44,7 @@
       (read-post-info src)))
 
   (define site (new site% (posts posts)))
-  (define index (build-index posts))
+  (define index (build-index #f posts))
 
   ;; Delete existing dest-dir
   ;; (delete-directory/files (get-dest-dir))
@@ -53,13 +53,13 @@
     (write-post post (send index get-prev post) (send index get-next post) site))
 
   ;; Write main index
-  ;; FIXME
+  (write-index index site)
 
   ;; Write tag pages
   ;; FIXME
 
   ;; Write feeds
-  (write-atom-feed index #f)
+  (write-atom-feed index)
   ;; FIXME
 
   posts)
@@ -92,7 +92,7 @@
             #:when (send post index?)
             [tag (in-list (send post get-tags))])
         (hash-set! h tag #t))
-      (sort string<? (hash-keys h)))
+      (sort (hash-keys h) string<?))
 
     (define/public (get-header-html)
       (xexprs->html (get-header-xexprs)))
@@ -136,8 +136,8 @@
                 posts)  ;; (Listof PostInfo), sorted most recent first
     (super-new)
 
-    (define prev-h #f) ;; Hasheq[PostInfo => PostInfo/#f]
-    (define next-h #f) ;; Hasheq[PostInfo => PostInfo/#f]
+    (define prev-h (make-hasheq)) ;; Hasheq[PostInfo => PostInfo/#f]
+    (define next-h (make-hasheq)) ;; Hasheq[PostInfo => PostInfo/#f]
     (for ([post (in-list posts)]
           [next-post (in-list (if (pair? posts) (cdr posts) '()))])
       (hash-set! next-h post next-post)
@@ -166,35 +166,41 @@
     (define/public (get-tag-url) ;; no tag => base url (implicit /index.html)
       (if tag (config:get-tag-url tag) (get-base-url)))
 
-    (define/public (get-tag-dest-dir+file-name-base)
-      (cond [tag (values (get-tags-dest-dir) (slug tag))]
-            [else (values (get-dest-dir) "index")]))
-
-    (define/public (get-dest-file/page page-num)
-      (define-values (dest-dir file-name-base) (get-tag-dest-dir+file-name-base))
-      (build-path dest-dir (file/page file-name-base page-num)))
+    (define/public (get-tag-dest-file-name-base)
+      (if tag (slug tag) "index"))
+    (define/public (get-tag-dest-dir)
+      (if tag (get-tags-dest-dir) (get-dest-dir)))
     ))
 
 ;; IndexPage = instance of index-page%
 (define index-page%
   (class object%
     (init-field index           ;; Index
-                file-name-base  ;; String
+                posts           ;; (Listof Post)
                 page-num        ;; Nat
                 num-pages)      ;; Nat
+    (super-new)
 
     (define/public (get-index) index)
+    (define/public (get-posts) posts)
     (define/public (get-page-num) page-num)
     (define/public (get-num-pages) num-pages)
     (define/public (get-title)
       (cond [(zero? page-num) (send index get-title)]
             [else (format "~a (page ~a)" (send index get-title) (add1 page-num))]))
 
+    (define/public (get-dest-file-name)
+      (file/page (send index get-tag-dest-file-name-base) page-num))
     (define/public (get-dest-file)
-      (send index get-dest-file/page page-num))
+      (build-path (send index get-tag-dest-dir) (get-dest-file-name)))
 
-    (define/public (get-rel-www)
-      (format "tags/~a" (file/page file-name-base page-num)))
+    (define/public (get-url)
+      (let ([tag (send index get-tag)])
+        (cond [tag (build-url (get-tags-url) (get-dest-file))]
+              [else (build-url (get-base-url) (get-dest-file-name))])))
+    (define/public (get-local-enc-url)
+      (build-enc-url #:local? #t (get-url)))
+
     (define/public (get-local-enc-feed-url)
       (send index get-local-enc-feed-url))
 
@@ -208,16 +214,20 @@
                [href ,(build-enc-url (get-tag-url (or tag "all")))]))))
 
     (define/public (get-pagination-html)
-      (define-values (_dest-dir file-name-base)
-        (send index get-tag-dest-dir+file-name-base))
+      (define file-name-base (send index get-tag-dest-file-name-base))
       (xexpr->string `(footer ,(bootstrap-pagination file-name-base page-num num-pages))))
     ))
 
-;; build-index : (Listof Postinfo) -> Index
-(define (build-index posts0)
-  (define posts (filter (lambda (post) (send post index?)) posts0))
-  (define sorted-posts (sort posts string>? #:key (lambda (post) (send post sortkey))))
-  (new index% (posts sorted-posts)))
+;; build-index : String/#f (Listof Postinfo) -> Index
+(define (build-index tag posts)
+  (define sorted-posts
+    (sort (filter (lambda (post)
+                    (and (send post index?)
+                         (if tag (member tag (send post get-tags)) #t)))
+                  posts)
+          string>?
+          #:key (lambda (post) (send post sortkey))))
+  (new index% (tag tag) (posts sorted-posts)))
 
 ;; ============================================================
 ;; Write Post
