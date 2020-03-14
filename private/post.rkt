@@ -13,9 +13,7 @@
          markdown
          "../config.rkt"
          "template.rkt"
-         "html.rkt"
-         "xexpr-map.rkt"
-         "xexpr2text.rkt")
+         "xexpr.rkt")
 (provide (all-defined-out))
 
 ;; TODO IDEAS
