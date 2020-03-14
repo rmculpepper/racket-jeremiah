@@ -252,9 +252,8 @@
       (member (metadata-display meta) '("index" "draft")))
 
     (define/public (sortkey) ;; -> String
-      (define date (or (metadata-date meta)
-                       (error 'post%::sortkey "no date: ~e" (about))))
-      (string-append date (metadata-auxsort meta)))
+      (or (metadata-date meta)
+          (error 'post%::sortkey "no date: ~e" (about))))
 
     (define/public (about) (format "(post ~e)" src))
 
@@ -339,9 +338,8 @@
 ;; Metadata is a hasheq with the following possible keys:
 ;; - 'title : String
 ;; - 'title-xexpr : XExpr -- text or span element containing rendered title
-;;       -- Note: cannot be set by header.
+;;       -- NOTE: currently disabled, because it looks weird (maybe just CSS issue?)
 ;; - 'date : String -- should have form "YYYY-MM-DD"
-;; - 'auxsort : String -- extra stuff (eg time of day) to control sorting
 ;; - 'author : String
 ;; - 'tags : String (comma-separated)
 ;; - 'display : "index" | "draft" | "norender"
@@ -357,7 +355,7 @@
   (or (hash-ref h 'title #f)
       (error 'metadata-title "missing title: ~e" h)))
 (define (metadata-title-xexpr h)
-  (or (hash-ref h 'title-xexpr #f)
+  (or ;;(hash-ref h 'title-xexpr #f) -- see note above
       (hash-ref h 'title #f)
       (error 'metadata-title "missing title: ~e" h)))
 (define (metadata-date h)
@@ -365,8 +363,6 @@
     [(pregexp "^\\d{4}-\\d{2}-\\d{2}" (list d)) d]
     [(? string? d) (error 'metadata-date "bad date: ~e" d)]
     [#f #f]))
-(define (metadata-auxsort h)
-  (hash-ref h 'auxsort ""))
 (define (metadata-author h)
   (hash-ref h 'author ""))
 (define (metadata-tags h)
