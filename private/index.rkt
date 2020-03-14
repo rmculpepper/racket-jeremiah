@@ -108,6 +108,7 @@
     (super-new)
 
     (define/public (get-page-type) 'index)
+    (define/public (get-tag) (send index get-tag))
 
     (define/public (get-index) index)
     (define/public (get-posts) posts)

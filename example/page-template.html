@@ -57,20 +57,13 @@
             "col-md-4" divs, or 2 "col-md-6" divs. }
         <!-- Main column -->
         <div id="content" class="col-md-12">
-          @;{ To put something only on the home page, check for
-              @(send page get-rel-www) being "index.html" }
-          @;{
-                @(when (string-ci=? (send page get-rel-www) "index.html")
-                  @list{
-                    <h1>Welcome</h1>
-                    <p>Here is some text that only goes on the home page,
-                      because <code>@"@"(send page get-rel-www)</code> is
-                      <code>index.html</code>.</p> })
-                @;{ Index pages for posts have @tag that's not #f }
-                @(when tag  ;; FIXME
-                  @list{<h1>Posts tagged <em>@|tag|</em></h1>})
-                @;{ The main page contents are in @contents }
-          }
+          @(when (and (eq? (send page get-page-type) 'index) (not (send page get-tag)))
+             @list{
+               <h1>Welcome</h1>
+                 <p>Here is some text that only goes on the home page.</p>
+                 })
+          @(when (and (eq? (send page get-page-type) 'index) (send page get-tag))
+             @list{<h1>Posts tagged <em>@(xexpr->html (send page get-tag))</em></h1>})
 
 <!-- CONTENT -->
 @|content-html|
