@@ -59,7 +59,6 @@
 ;; URL
 
 ;; root-url : (Parameterof URL) -- not string!
-;; PRE: path must end in "/" (represented as empty final path/param)
 (define base-url (make-parameter #f))
 
 (define (get-base-url #:who [who 'get-full-base-url])
@@ -74,10 +73,11 @@
 (define-get-url (get-tag-url tag) "tags" (format "~a.html" (slug tag)))
 (define-get-url (get-atom-feed-url tag) "feeds" (format "~a.atom.xml" (slug tag)))
 
-(define (get-base-link-no-slash #:who [who 'get-base-link-no-slash])
-  (no-end-/ (url->string (get-base-url #:who who))))
+(define (get-base-local-link-no-slash #:who [who 'get-base-link-no-slash])
+  (no-end-/ (url->string (local-url (get-base-url #:who who)))))
 
 (define (get-tag-link tag) (url->string (get-tag-url tag)))
+(define (get-tag-local-link tag) (url->string (local-url (get-tag-url tag))))
 (define (get-atom-feed-link tag) (url->string (get-atom-feed-url tag)))
 
 ;; URL utils
@@ -93,10 +93,18 @@
     [_ (error who "cannot convert to local URL: ~e" u)]))
 
 ;; build-url : URL String ... -> URL
-(define (build-url url #:local? [local? #f] . paths)
-  (for/fold ([url (if local? (local-url url) url)])
-            ([path (in-list paths)])
-    (combine-url/relative url path)))
+(define (build-url base #:local? [local? #f] . paths)
+  (define (trim-final-/ pps)
+    (cond [(and (pair? pps) (match (last pps) [(path/param "" '()) #t] [_ #f]))
+           (drop-right pps 1)]
+          [else pps]))
+  (match (if local? (local-url base) base)
+    [(url scheme user host post #t pps '() #f)
+     (define new-pps
+       (for*/list ([path (in-list paths)] [part (in-list (regexp-split #rx"/" path))])
+         (path/param part null)))
+     (define pps* (append (trim-final-/ pps) new-pps))
+     (url scheme user host post #t pps* '() #f)]))
 
 ;; build-link : URL/String String ... -> String
 (define (build-link base #:local? [local? #f] . paths)

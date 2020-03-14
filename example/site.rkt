@@ -9,7 +9,7 @@
 
 (define-runtime-path root ".")
 (root-dir root)
-(base-url (string->url "https://mysite.com/blog/"))
+(base-url (string->url "https://mysite.com/"))
 
 (tag-uri-entity "ryanc@racket-lang.org,2020")
 (tag-uri-prefix "blog")

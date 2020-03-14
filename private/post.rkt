@@ -532,7 +532,7 @@
                    [xs xs]))
       (string-join (map xexpr->string xs) ""))
     (define/public (tag->xexpr tag-s)
-      `(a ([href ,(get-tag-link tag-s)]) ,tag-s))
+      `(a ([href ,(get-tag-local-link tag-s)]) ,tag-s))
 
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
     (define/public (get-header-xexprs)

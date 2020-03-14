@@ -82,3 +82,8 @@
                    (j-error "duplicate post name\n  path: ~e\n  previous path: ~e"
                             (postsrc-path src) (postsrc-path prev-src)))]
              [else (hash-set! seen (postsrc-name src) src)])))))
+
+;; ----------------------------------------
+(require racket/lazy-require)
+(lazy-require ["private/preview.rkt" (preview)])
+(provide preview)

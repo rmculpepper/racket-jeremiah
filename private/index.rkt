@@ -33,7 +33,7 @@
       (xexprs->html (get-header-xexprs)))
     (define/public (get-header-xexprs)
       (define (mkcss path)
-        `(link ([rel "stylesheet"] [type "text/ccs"]
+        `(link ([rel "stylesheet"] [type "text/css"]
                 [href ,(build-link #:local? #t (get-base-url) path)])))
       `((meta ([charset "utf-8"]))
         (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
@@ -48,7 +48,7 @@
 
     (define/public (link [path ""]) (build-link #:local? #t (get-base-url) path))
     (define/public (full-link [path ""]) (build-link (get-base-url) path))
-    (define/public (uri-prefix) (get-base-link-no-slash))
+    (define/public (uri-prefix) (get-base-local-link-no-slash))
     ))
 
 
@@ -244,7 +244,7 @@
       (author (name ,(get-site-author)))
       (link ([rel "self"] [href ,(url->string (send index get-feed-url))]))
       (link ([rel "alternate"] [href ,(url->string (send index get-tag-url))]))
-      (id ,(build-tag-uri ""))
+      (id ,(build-tag-uri (format "feeds/~a" (send index get-feed-file-name))))
       (updated ,updated)
       ,@(for/list ([post (in-list posts)]
                    [_ (in-range (site-max-feed-items))])
