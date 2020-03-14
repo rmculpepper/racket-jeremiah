@@ -2,11 +2,10 @@
 <article>
   <header>
     <h1>@(send post get-title-html)</h1>
-    <p class='date-and-tags'>@(send post get-date-html) :: @(send post get-tags-html)</p>
+    <p class='date-and-tags'>@(send post get-date-html) @(send post get-tags-html)</p>
     @;{ <p class='authors'>By: @|authors|</p> }
   </header>
   @(send post get-body-html)
-
   <footer>
     @;{
       @twitter-share-button[full-uri]
