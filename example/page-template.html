@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    @(send site get-header-html)
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="@(send site link)/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/custom.css">
     @(send page get-header-html)
 
     @;{ FIXME FIXME

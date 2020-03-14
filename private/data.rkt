@@ -32,24 +32,6 @@
       (sort (hash-keys h) string<?))
 
     ;; ----------------------------------------
-    ;; Rendering
-
-    (define/public (get-header-html)
-      (xexprs->html (get-header-xexprs)))
-    (define/public (get-header-xexprs)
-      (define (mkcss path)
-        `(link ([rel "stylesheet"] [type "text/css"]
-                [href ,(build-link #:local? #t (get-base-url) path)])))
-      `((meta ([charset "utf-8"]))
-        (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
-        (link ([rel "icon"] [href ,(build-link #:local? #t (get-base-url) "favicon.ico")]))
-        ;; CSS
-        ,(mkcss "css/bootstrap.min.css")
-        ,(mkcss "css/pygments.css")
-        ,(mkcss "css/scribble.css")
-        ,(mkcss "css/custom.css")))
-
-    ;; ----------------------------------------
     ;; Utils for site.rkt and templates
 
     (define/public (link . paths) (apply build-link #:local? #t (get-base-url) paths))
