@@ -1,17 +1,11 @@
 #lang racket/base
-(require racket/match
-         racket/class
-         racket/path
+(require racket/class
          racket/file
-         racket/string
-         net/url
-         (only-in racket/sequence in-slice)
-         (only-in markdown xexpr->string)
          "config.rkt"
          "util.rkt"
+         "private/data.rkt"
          "private/post.rkt"
-         "private/index.rkt"
-         "private/template.rkt")
+         "private/index.rkt")
 
 ;; ----------------------------------------
 

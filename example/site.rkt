@@ -3,7 +3,7 @@
          racket/string
          racket/class
          jeremiah/config
-         (only-in jeremiah/private/post xexpr->html)
+         (only-in jeremiah/private/data xexpr->html)
          net/url
          web-server/templates)
 
