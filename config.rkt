@@ -42,6 +42,9 @@
 
 ;; URL
 
+;; Note: throughout this project, "url" refers to instances of the net/url
+;; struct, and "link" refers to the string representation of a URL.
+
 ;; root-url : (Parameterof URL) -- not string!
 ;; PRE: path must end in "/" (represented as empty final path/param)
 (define base-url (make-parameter #f))
@@ -58,8 +61,11 @@
 (define-get-url (get-tag-url tag) "tags" (format "~a.html" (slug tag)))
 (define-get-url (get-atom-feed-url tag) "feeds" (format "~a.atom.xml" (slug tag)))
 
-(define (get-enc-base-url-no-slash #:who [who 'get-enc-base-url-no-slash])
-  (no-end-/ (enc-url (get-base-url #:who who))))
+(define (get-base-link-no-slash #:who [who 'get-base-link-no-slash])
+  (no-end-/ (url->string (get-base-url #:who who))))
+
+(define (get-tag-link tag) (url->string (get-tag-url tag)))
+(define (get-atom-feed-link tag) (url->string (get-atom-feed-url tag)))
 
 ;; URL utils
 
@@ -79,9 +85,10 @@
             ([path (in-list paths)])
     (combine-url/relative url path)))
 
-;; build-enc-url : URL String ... -> String
-(define (build-enc-url url #:local? [local? #f] . paths)
-  (url->string (apply build-url url paths #:local? local?)))
+;; build-link : URL/String String ... -> String
+(define (build-link base #:local? [local? #f] . paths)
+  (let ([base (if (url? base) base (string->url base))])
+    (url->string (apply build-url base paths #:local? local?))))
 
 ;; no-end-/ : String -> String
 (define (no-end-/ str) (regexp-replace #rx"/$" str ""))

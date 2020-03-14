@@ -99,10 +99,10 @@
     (define/public (get-header-xexprs)
       (define (mkcss path)
         `(link ([rel "stylesheet"] [type "text/ccs"]
-                [href ,(build-enc-url #:local? #t (get-base-url) path)])))
+                [href ,(build-link #:local? #t (get-base-url) path)])))
       `((meta ([charset "utf-8"]))
         (meta ([name "viewport"] [content "width=device-width, initial-scale=1.0"]))
-        (link ([rel "icon"] [href ,(build-enc-url #:local? #t (get-base-url) "favicon.ico")]))
+        (link ([rel "icon"] [href ,(build-link #:local? #t (get-base-url) "favicon.ico")]))
         ;; CSS
         ,(mkcss "css/bootstrap.min.css")
         ,(mkcss "css/pygments.css")
@@ -112,9 +112,9 @@
 
     ;; Util
 
-    (define/public (link [path ""]) (build-enc-url #:local? #t (get-base-url) path))
-    (define/public (full-link [path ""]) (build-enc-url (get-base-url) path))
-    (define/public (uri-prefix) (get-enc-base-url-no-slash))
+    (define/public (link [path ""]) (build-link #:local? #t (get-base-url) path))
+    (define/public (full-link [path ""]) (build-link (get-base-url) path))
+    (define/public (uri-prefix) (get-base-link-no-slash))
     ))
 
 (define page<%>
@@ -160,8 +160,8 @@
       (build-path (get-feeds-dest-dir) (get-feed-file-name)))
     (define/public (get-feed-url)
       (build-url (get-feeds-url) (get-feed-file-name)))
-    (define/public (get-local-enc-feed-url)
-      (enc-url (local-url (get-feed-url))))
+    (define/public (get-feed-local-link)
+      (url->string (local-url (get-feed-url))))
 
     (define/public (get-tag-url) ;; no tag => base url (implicit /index.html)
       (if tag (config:get-tag-url tag) (get-base-url)))
@@ -198,11 +198,11 @@
       (let ([tag (send index get-tag)])
         (cond [tag (build-url (get-tags-url) (get-dest-file))]
               [else (build-url (get-base-url) (get-dest-file-name))])))
-    (define/public (get-local-enc-url)
-      (build-enc-url #:local? #t (get-url)))
+    (define/public (get-local-link)
+      (build-link #:local? #t (get-url)))
 
-    (define/public (get-local-enc-feed-url)
-      (send index get-local-enc-feed-url))
+    (define/public (get-enc-feed-local-link)
+      (send index get-feed-local-link))
 
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
     (define/public (get-header-xexprs)
@@ -211,7 +211,7 @@
         ;; (meta ([name "description"] [content ""])) ;; FIXME
         ,@(if tag (list `(meta ([name "keywords"] [content ,tag]))) '())
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(build-enc-url (get-tag-url (or tag "all")))]))))
+               [href ,(send index get-feed-local-link)]))))
 
     (define/public (get-pagination-html)
       (define file-name-base (send index get-tag-dest-file-name-base))
@@ -340,8 +340,8 @@
        [xml:lang "en"])
       (title ([type "text"]) ,(format "~a: ~a" (get-site-title) title))
       (author (name ,(get-site-author)))
-      (link ([rel "self"] [href ,(enc-url (send index get-feed-url))]))
-      (link ([rel "alternate"] [href ,(enc-url (send index get-tag-url))]))
+      (link ([rel "self"] [href ,(url->string (send index get-feed-url))]))
+      (link ([rel "alternate"] [href ,(url->string (send index get-tag-url))]))
       (id ,(build-tag-uri ""))
       (updated ,updated)
       ,@(for/list ([post (in-list posts)]
@@ -355,7 +355,7 @@
 (define (post->atom-feed-entry-xexpr post)
   `(entry
     (title ([type "text"]) ,(send post get-title))
-    (link ([rel "alternate"] [href ,(send post get-full-enc-url)]))
+    (link ([rel "alternate"] [href ,(send post get-full-link)]))
     (id ,(build-tag-uri (send post get-rel-www)))
     (published ,(send post get-date-8601))
     (updated ,(send post get-date-8601))
@@ -364,6 +364,6 @@
              ,(send post get-blurb-html)
              ,(cond [(send post get-more?)
                      (xexpr->string
-                      `(a ([href ,(send post get-full-enc-url)])
+                      `(a ([href ,(send post get-full-link)])
                           (em "More" hellip)))]
                     [else ""]))))

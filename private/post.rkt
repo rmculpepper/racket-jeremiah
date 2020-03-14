@@ -454,8 +454,8 @@
 
     (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
     (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
-    (define/public (get-full-enc-url) (enc-url (get-url)))
-    (define/public (get-local-enc-url) (enc-url (local-url (get-url))))
+    (define/public (get-full-link) (url->string (get-url)))
+    (define/public (get-local-link) (url->string (local-url (get-url))))
 
     (define/public (index?)
       (member (metadata-display meta) '("index")))
@@ -503,23 +503,21 @@
                    [xs xs]))
       (string-join (map xexpr->string xs) ""))
     (define/public (tag->xexpr tag-s)
-      `(a ([href ,(tag->enc-url tag-s)]) ,tag-s))
-    (define/public (tag->enc-url tag-s)
-      (url->string (get-tag-url tag-s)))
+      `(a ([href ,(get-tag-link tag-s)]) ,tag-s))
 
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
     (define/public (get-header-xexprs)
       (define (mkcss path)
         `(link ([rel "stylesheet"] [type "text/ccs"]
-                [href ,(build-enc-url #:local? #t (get-base-url) path)])))
+                [href ,(build-link #:local? #t (get-base-url) path)])))
       `((title ,(get-title)) ;; FIXME
         (meta ([name "description"] [content ""])) ;; FIXME
         ;;(meta ([name "author"] [content ,(get-authors)]))
         (meta ([name "keywords"] [content ,(string-join (get-tags) ",")]))
-        (link ([rel "canonical"] [href ,(get-full-enc-url)]))
+        (link ([rel "canonical"] [href ,(get-full-link)]))
         ;; Feeds
         (link ([rel "alternate"] [type "application/atom+xml"] [title "Atom Feed"]
-               [href ,(build-enc-url (get-base-url) "feeds/all.atom.xml")]))))
+               [href ,(build-link (get-base-url) "feeds/all.atom.xml")]))))
     ))
 
 
