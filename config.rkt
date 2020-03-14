@@ -48,6 +48,7 @@
   (define (getter x ... #:who [who 'getter])
     (build-path (get-root-dir #:who who) relpath ...)))
 
+(define-get-path (get-static-src-dir) "_static")
 (define-get-path (get-post-src-dir)   "_posts")
 (define-get-path (get-cache-dir)      "_cache")
 (define-get-path (get-post-cache-dir) "_cache" "posts")

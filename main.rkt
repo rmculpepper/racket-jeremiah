@@ -46,6 +46,15 @@
   ;; Delete existing dest-dir
   ;; (delete-directory/files (get-dest-dir))
 
+  ;; Copy static resources
+  (parameterize ((current-directory (get-static-src-dir)))
+    (for ([file (in-list (find-files file-exists?))])
+      (define src-file (build-path (get-static-src-dir) file))
+      (define dest-file (build-path (get-dest-dir) file))
+      (make-parent-directory* dest-file)
+      (when (file-exists? dest-file) (delete-file dest-file))
+      (copy-file src-file dest-file)))
+
   ;; Write posts
   (for ([post (in-list posts)] #:when (send post render?))
     (write-post post (send index get-prev post) (send index get-next post) site))
