@@ -48,13 +48,13 @@
   (define (getter x ... #:who [who 'getter])
     (build-path (get-root-dir #:who who) relpath ...)))
 
-(define-get-path (get-static-src-dir) "_static")
-(define-get-path (get-post-src-dir)   "_posts")
-(define-get-path (get-cache-dir)      "_cache")
-(define-get-path (get-post-cache-dir) "_cache" "posts")
-(define-get-path (get-dest-dir)       "_build")
-(define-get-path (get-feeds-dest-dir) "_build" "feeds")
-(define-get-path (get-tags-dest-dir)  "_build" "tags")
+(define-get-path (get-static-src-dir) "static")
+(define-get-path (get-post-src-dir)   "posts")
+(define-get-path (get-cache-dir)      "cache")
+(define-get-path (get-post-cache-dir) "cache" "posts")
+(define-get-path (get-dest-dir)       "build")
+(define-get-path (get-feeds-dest-dir) "build" "feeds")
+(define-get-path (get-tags-dest-dir)  "build" "tags")
 
 ;; URL
 
