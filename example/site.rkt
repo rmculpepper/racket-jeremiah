@@ -21,6 +21,6 @@
  (lambda (post)
    (include-template "_posts/_index-entry-template.html")))
 
-(index-renderer
- (lambda (page rel-prev rel-next)
-   (include-template "_posts/_index-template.html")))
+(page-renderer
+ (lambda (page content-html site)
+   (include-template "_posts/_page-template.html")))

@@ -151,7 +151,3 @@
 (define index-entry-renderer (make-parameter #f))
 (define (get-index-entry-renderer)
   (or (index-entry-renderer) (error 'get-index-entry-renderer "not set")))
-
-(define index-renderer (make-parameter #f))
-(define (get-index-renderer)
-  (or (index-renderer) (error 'get-index-renderer "not set")))

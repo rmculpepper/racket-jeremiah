@@ -108,6 +108,13 @@
         ,(mkcss "css/pygments.css")
         ,(mkcss "css/scribble.css")
         ,(mkcss "css/custom.css")))
+
+
+    ;; Util
+
+    (define/public (link [path ""]) (build-enc-url #:local? #t (get-base-url) path))
+    (define/public (full-link [path ""]) (build-enc-url (get-base-url) path))
+    (define/public (uri-prefix) (get-enc-base-url-no-slash))
     ))
 
 (define page<%>
@@ -258,7 +265,7 @@
   (define rendered-posts
     (for/list ([post (in-list (send index-page get-posts))])
       (render-index-entry post)))
-  (define content-html (render-index index-page (string-join rendered-posts "\n")))
+  (define content-html (string-join rendered-posts "\n"))
   (define page-html (render-page index-page content-html site))
   (with-output-to-file (send index-page get-dest-file)
     #:exists 'replace
@@ -293,9 +300,6 @@
 
 (define (render-index-entry post)
   ((get-index-entry-renderer) post))
-
-(define (render-index index-page content-html)
-  ((get-index-entry-renderer) index-page))
 
 
 ;; ============================================================

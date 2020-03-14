@@ -1,51 +1,3 @@
-<!DOCTYPE html>
-@(let ()
-   (define uri-prefix (get-enc-base-url-no-slash))
-   (define uri-path (send post get-rel-www))
-   @list{
-<html lang="en">
-  @;{ The at-exp reader for a template treats this as a comment.
-      Also, notice the use template variables like @title,
-      @description etc. }
-  <head>
-    @(send post get-header-html)
-    @(let ()
-       (define rel-next (and next-post (send next-post get-local-enc-url)))
-       (define rel-prev (and prev-post (send prev-post get-local-enc-url)))
-       @list{
-         @(when rel-next @list{<link rel="next" href="@|rel-next|">})
-         @(when rel-prev @list{<link rel="prev" href="@|rel-prev|">})
-    })
-  </head>
-  <body>
-
-    @(include-template "_body-nav-template.html")
-
-    <div class="container">
-      <div class="row">
-        @;{ Remember that Twitter Bootstrap has a 12 cell model. The
-            col-md-N classes should add up to 12.  For instance 3
-            "col-md-4" divs, or 2 "col-md-6" divs. }
-        <!-- Main column -->
-        <div id="content" class="col-md-12">
-          @;{ To put something only on the home page, check for
-              @uri-path being "/index.html" }
-          @;{
-                @(when (string-ci=? uri-path
-                                    (string-append uri-prefix
-                                                   "/index.html"))
-                  @list{
-                    <h1>Welcome</h1>
-                    <p>Here is some text that only goes on the home page,
-                      because <code>@"@"uri-path</code> is
-                      <code>/index.html</code>.</p> })
-                @;{ Index pages for posts have @tag that's not #f }
-                @(when tag
-                  @list{<h1>Posts tagged <em>@|tag|</em></h1>})
-                @;{ The main page contents are in @contents }
-          }
-
-
 <!-- POST -->
 <article>
   <header>
@@ -65,14 +17,3 @@
   </footer>
 </article>
 <!-- END POST -->
-
-
-        </div>
-      </div>
-    </div>
-    <!-- </body> JS -->
-    <script type="text/javascript" src="@|uri-prefix|/js/jquery-3.2.1.slim.min.js"></script>
-    <script type="text/javascript" src="@|uri-prefix|/js/bootstrap.bundle.min.js"></script>
-  </body>
-</html>
-})
