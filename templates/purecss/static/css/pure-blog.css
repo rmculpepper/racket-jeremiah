@@ -37,9 +37,10 @@ h3 {
     text-align: center;
     top: auto;
     margin: 3em auto;
+    height: 100%;
 }
 
-.sidebar {
+.titlebar {
     background: rgb(61, 79, 93);
     color: #fff;
 }
@@ -96,6 +97,9 @@ h3 {
 
 .content {
     padding: 2em 1em 0;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 90ch;
 }
 
 .post {
@@ -150,26 +154,4 @@ h3 {
 .footer .pure-menu a:hover,
 .footer .pure-menu a:focus {
     background: none;
-}
-
-@media (min-width: 48em) {
-    .content {
-        padding: 2em 3em 0;
-        margin-left: 25%;
-    }
-
-    .header {
-        margin: 80% 2em 0;
-        text-align: right;
-    }
-
-    .sidebar {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-    }
-
-    .footer {
-        text-align: center;
-    }
 }
