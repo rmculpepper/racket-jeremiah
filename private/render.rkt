@@ -8,7 +8,7 @@
          racket/string
          net/url
          markdown
-         "../config.rkt"
+         "config.rkt"
          "data.rkt"
          "xexpr.rkt")
 (provide (all-defined-out))

@@ -8,8 +8,8 @@
          racket/string
          net/url
          markdown
-         "../config.rkt"
-         (prefix-in config: "../config.rkt")
+         "config.rkt"
+         (prefix-in config: "config.rkt")
          "xexpr.rkt")
 (provide (all-defined-out))
 

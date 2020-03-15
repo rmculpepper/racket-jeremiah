@@ -6,7 +6,7 @@
          net/url
          (only-in xml [xexpr->string xml:xexpr->string])
          (only-in racket/sequence in-slice)
-         "../config.rkt"
+         "config.rkt"
          "data.rkt"
          "render.rkt"
          "xexpr.rkt")

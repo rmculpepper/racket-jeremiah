@@ -2,7 +2,7 @@
 (require web-server/dispatchers/dispatch
          web-server/servlet-env
          racket/file
-         "../config.rkt")
+         "config.rkt")
 (provide preview)
 
 (define PORT 3500)

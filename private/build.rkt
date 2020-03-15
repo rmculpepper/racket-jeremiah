@@ -8,7 +8,7 @@
          racket/path
          racket/file
          markdown
-         "../config.rkt"
+         "config.rkt"
          "template.rkt"
          "data.rkt"
          "xexpr.rkt")
