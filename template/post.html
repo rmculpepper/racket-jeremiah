@@ -8,5 +8,7 @@
     <p class='authors'>By: @(add-between (send post get-authors) ", ")</p>
   </header>
   @(send post get-body-html)
-  @;{ <footer></footer> }
+  <footer>
+    @(include-template "bs-post-nav.html")
+  </footer>
 </article>

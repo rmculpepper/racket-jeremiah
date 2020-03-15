@@ -55,9 +55,6 @@
     get-header-xexprs
 
     get-feed-link
-
-    get-pagination-html
-    get-pagination-xexprs
     ))
 
 
@@ -97,36 +94,7 @@
         ,@(cond [(= page-num (sub1 num-pages)) null]
                 [else (list `(link ([rel "next"] [href ,(get-link (add1 page-num))])))])
         ))
-
-    (define/public (get-pagination-html)
-      (xexprs->html (get-pagination-xexprs)))
-    (define/public (get-pagination-xexprs)
-      (define file-name-base (send index get-tag-dest-file-name-base))
-      (list `(footer ,(bootstrap-pagination file-name-base page-num num-pages))))
     ))
-
-(define (bootstrap-pagination file-name-base page-num num-pages)
-  `(ul ([class "pagination"])
-       ,(cond [(zero? page-num)
-               `(li ([class "page-item disabled"])
-                    (a ([class "page-link"] [href "#"]) 'larr))]
-              [else
-               `(li ([class "page-item"])
-                    (a ([class "page-link"]
-                        [href ,(file/page file-name-base (sub1 page-num))])
-                       'larr))])
-       ,@(for/list ([n (in-range num-pages)])
-           `(li ([class ,(cond [(= n page-num) "page-item active"] [else "page-item"])])
-                (a ([class "page-link"]
-                    [href ,(file/page file-name-base n)])
-                   ,(number->string (add1 n)))))
-       ,(cond [(= (add1 page-num) num-pages)
-               `(li ([class "page-item disabled"])
-                    (a ([class "page-link"] [href "#"]) 'rarr))]
-              [else `(li ([class "page-item"])
-                         (a ([class "page-link"]
-                             [href ,(file/page file-name-base (add1 page-num))])
-                            'rarr))])))
 
 
 ;; ============================================================
@@ -180,36 +148,7 @@
                  => (lambda (next)
                       (list `(link ([rel "next"] [href ,(send next get-link)]))))]
                 [else null])))
-
-    (define/public (get-pagination-html)
-      (xexprs->html (get-pagination-xexprs)))
-    (define/public (get-pagination-xexprs)
-      (bootstrap-prev/next-page (send (the-site) get-prev-post this)
-                                (send (the-site) get-next-post this)))
     ))
-
-(define (bootstrap-prev/next-page prev-page next-page)
-  ;; Bootstrap 4 prev/next pagination
-  (list
-   `(div ([class "row justify-content-center"])
-         (nav ([aria-label "Page Navigation"])
-              (ul ([class "pagination"])
-                  ,@(cond [prev-page
-                           (list
-                            `(li ([class "page-item"])
-                                 (a ([class "page-link"] [aria-label "Previous"]
-                                     [href ,(send prev-page get-link)])
-                                    (span ([aria-hidden "true"])
-                                          larr ,(send prev-page get-title-xexpr)))))]
-                          [else null])
-                  ,@(cond [next-page
-                           (list
-                            `(li ([class "page-item"])
-                                 (a ([class "page-link"] [aria-label "Next"]
-                                     [href ,(send next-page get-link)])
-                                    (span ([aria-hidden "true"])
-                                          rarr ,(send next-page get-title-xexpr)))))]
-                          [else null]))))))
 
 
 ;; ============================================================

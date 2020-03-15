@@ -56,7 +56,7 @@
 
           @|content-html|
 
-          @(send page get-pagination-html)
+          @(when (send page is-page-type? 'index) (include-template "bs-index-pagination.html"))
         </div>
       </div>
     </div>
