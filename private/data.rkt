@@ -160,7 +160,9 @@
 
     (define/public (get-title) (metadata-title meta))
     (define/public (get-title-xexpr) (metadata-title-xexpr meta))
-    (define/public (get-author) (metadata-author meta))
+    (define/public (get-authors)
+      (define authors (metadata-authors meta))
+      (if (pair? authors) authors (list (get-site-author))))
     (define/public (get-tags) (metadata-tags meta))
 
     (define/public (get-date) ;; short date: YYYY-MM-DD
@@ -234,7 +236,7 @@
 ;; - 'title-xexpr : XExpr -- text or span element containing rendered title
 ;;       -- NOTE: currently disabled, because it looks weird (maybe just CSS issue?)
 ;; - 'date : String -- should have form "YYYY-MM-DD"
-;; - 'author : String
+;; - 'author : String (comma-separated)
 ;; - 'tags : String (comma-separated)
 ;; - 'display : "index" | "draft" | "norender"
 
@@ -257,8 +259,8 @@
     [(pregexp "^\\d{4}-\\d{2}-\\d{2}" (list d)) d]
     [(? string? d) (error 'metadata-date "bad date: ~e" d)]
     [#f #f]))
-(define (metadata-author h)
-  (hash-ref h 'author ""))
+(define (metadata-authors h)
+  (string-split (hash-ref h 'author "") #rx"[ *],[ ]*" #:trim? #t))
 (define (metadata-tags h)
   (string-split (hash-ref h 'tags "") #rx"[ ]*,[ ]*" #:trim? #t))
 (define (metadata-display h)

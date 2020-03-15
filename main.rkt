@@ -36,7 +36,7 @@
   ;; Read metadata from cache, build index
   (define posts (map read-post srcs))
   (define index (build-index #f posts))
-  (define site (new site% (index index)))
+  (define site (new render-site% (index index)))
 
   (parameterize ((the-site site))
 

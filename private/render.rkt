@@ -14,6 +14,26 @@
 (provide (all-defined-out))
 
 ;; ============================================================
+;; Site
+
+(define render-site%
+  (class site%
+    (super-new)
+
+    ;; Rendering utilities for use by templates, etc
+
+    (define/public (tag->link-html tag)
+      (xexpr->html (tag->link-xexpr tag)))
+    (define/public (tag->link-xexpr tag)
+      `(a ([href ,(get-tag-link tag)]) ,tag))
+
+    (define/public (date->html d)
+      (xexpr->html (date->xexpr d)))
+    (define/public (date->xexpr d)
+      `(time ([datetime ,d]) ,d))
+    ))
+
+;; ============================================================
 ;; Pages
 
 (define page<%>
@@ -46,6 +66,7 @@
     (super-new)
 
     (define/public (get-page-type) 'index)
+    (define/public (is-page-type? type) (eq? (get-page-type) type))
 
     (define/public (render-page-html)
       (define content-html (render-content-html))
@@ -111,6 +132,7 @@
     (inherit-field)
     (inherit get-title
              get-date
+             get-authors
              get-tags
              get-link
              get-full-link
@@ -120,6 +142,7 @@
     (super-new)
 
     (define/public (get-page-type) 'post)
+    (define/public (is-page-type? type) (eq? (get-page-type) type))
 
     (define/public (render-page-html)
       (define content-html (render-content-html))
@@ -129,20 +152,25 @@
       ((get-post-renderer) this))
 
     (define/public (render-index-entry-html)
-      ((get-index-entry-renderer) this))
+      ((or (index-entry-renderer) default-index-entry-renderer) this))
 
     (define/public (get-title-html) (xexpr->html (get-title-xexpr)))
     (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
     (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
-    (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
-    (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
 
+    ;; DELETE ME
+    (define/public (get-authors-html) (xexprs->html (get-authors-xexprs)))
+    (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
+    (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
+    (define/public (get-authors-xexprs)
+      (define (author->xexpr a) `(span ([class "author"]) ,a))
+      (add-between (map author->xexpr (get-authors)) ", "))
     (define/public (get-date-xexpr)
       (let ([d (get-date)]) `(time ([datetime ,d] [pubdate "true"]) ,d)))
-
     (define/public (get-tags-xexpr)
-      `(span ([class "tags"]) ,@(add-between (map tag->xexpr (get-tags)) ", ")))
+      '(FIXME)
+      #;`(span ([class "tags"]) ,@(add-between (map tag->xexpr (get-tags)) ", ")))
 
     (define/public (get-header-xexprs)
       `((title ,(get-title))
@@ -168,9 +196,6 @@
                                 (send (the-site) get-next-post this)))
     ))
 
-(define (tag->xexpr tag-s)
-  `(a ([href ,(get-tag-link tag-s)]) ,tag-s))
-
 (define (bootstrap-prev/next-page prev-page next-page)
   ;; Bootstrap 4 prev/next pagination
   (list
@@ -193,3 +218,22 @@
                                     (span ([aria-hidden "true"])
                                           rarr ,(send next-page get-title-xexpr)))))]
                           [else null]))))))
+
+
+;; ============================================================
+
+(module default-renderers racket/base
+  (require web-server/templates
+           racket/class
+           racket/list
+           racket/string
+           net/url-structs
+           "../config.rkt"
+           "xexpr.rkt")
+  (provide (all-defined-out))
+
+  (define (default-index-entry-renderer post)
+    (define site (the-site))
+    (include-template "../template/index-entry.html")))
+
+(require (submod "." default-renderers))

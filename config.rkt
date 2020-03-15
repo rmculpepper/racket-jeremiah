@@ -23,8 +23,8 @@
 ;; ============================================================
 ;; Site configuration
 
-(define site-author (make-parameter "Site Author"))
-(define site-title (make-parameter "Site Title"))
+(define site-title (make-parameter #f))
+(define site-author (make-parameter #f))
 (define site-max-feed-items (make-parameter 100))
 (define site-posts-per-page (make-parameter 10))
 
