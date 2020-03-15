@@ -35,19 +35,21 @@
                  (map tag-link (send site get-tags)))
             </ul>
           </nav>
-          <div>
-            <a class="nav-link" href="@(send page get-feed-link)">Atom</a>
-          </div>
         </div>
       </div>
       <div class="content pure-u-1 pure-u-md-3-4">
-        <div class="posts">
-          @(when (and (send page is-page-type? 'index) (not (send page get-tag)))
-             @list{<h1 class="content-subhead">Posts</h1>})
-          @(when (and (send page is-page-type? 'index) (send page get-tag))
-             @list{<h1 class="content-subhead">Posts tagged 
-                     <em>@(xexpr->html (send page get-tag))</em>
-                   </h1>})
+        <div>
+          @(when (send page is-page-type? 'index)
+             @list{<div>
+                     <div style="float: right">
+                       <a class="" href="@(send page get-feed-link)">atom</a>
+                     </div>
+                     <h1 class="content-subhead">
+                       @(cond [(send page get-tag)
+                               @list{Posts tagged <em>@(xexpr->html (send page get-tag))</em>}]
+                              [else
+                               @list{Posts}])
+                     </h1>})
 
           @|content-html|
 
