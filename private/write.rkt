@@ -4,6 +4,7 @@
          racket/path
          racket/string
          net/url
+         (only-in xml [xexpr->string xml:xexpr->string])
          (only-in racket/sequence in-slice)
          "../config.rkt"
          "data.rkt"
@@ -18,8 +19,7 @@
 ;; Note: prev = older, next = newer
 (define (write-post post)
   (make-directory* (send post get-out-dir))
-  (define content-html (render-post post))
-  (define page-html (render-page post content-html))
+  (define page-html (send post render-page-html))
   (with-output-to-file (build-path (send post get-out-dir) "index.html")
     #:exists 'replace
     (lambda () (write-string page-html)))
@@ -27,14 +27,6 @@
     (for ([file (in-list (find-files file-exists?))]
           #:when (not (dont-copy-file? file)))
       (copy-file file (build-path (send post get-out-dir) file)))))
-
-;; render-post : Post -> String
-(define (render-post post)
-  ((get-post-renderer) post))
-
-;; render-page : Page String -> String
-(define (render-page page content-html)
-  ((get-page-renderer) page content-html))
 
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))
@@ -56,18 +48,11 @@
     (write-index-page index-page)))
 
 (define (write-index-page index-page)
-  (define rendered-posts
-    (for/list ([post (in-list (send index-page get-posts))])
-      (render-index-entry post)))
-  (define content-html (string-join rendered-posts "\n"))
-  (define page-html (render-page index-page content-html))
+  (define page-html (send index-page render-page-html))
   (make-parent-directory* (send index-page get-dest-file))
   (with-output-to-file (send index-page get-dest-file)
     #:exists 'replace
     (lambda () (write-string page-html))))
-
-(define (render-index-entry post)
-  ((get-index-entry-renderer) post))
 
 
 ;; ============================================================
@@ -105,7 +90,7 @@
           (post->atom-feed-entry-xexpr post))))
   (string-append 
    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-   (xexpr->html feed-x)))
+   (xml:xexpr->string feed-x)))
 
 ;; post->atom-feed-entry-xexpr : String Post -> XExpr
 (define (post->atom-feed-entry-xexpr post)

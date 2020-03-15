@@ -42,10 +42,20 @@
 (define render-index-page%
   (class* index-page% (page<%>)
     (inherit-field index page-num num-pages)
-    (inherit get-link)
+    (inherit get-link get-posts)
     (super-new)
 
     (define/public (get-page-type) 'index)
+
+    (define/public (render-page-html)
+      (define content-html (render-content-html))
+      ((get-page-renderer) this content-html))
+
+    (define/public (render-content-html)
+      (define rendered-posts
+        (for/list ([post (in-list (get-posts))])
+          (send post render-index-entry-html)))
+      (string-join rendered-posts "\n"))
 
     (define/public (get-header-html)
       (xexprs->html (get-header-xexprs)))
@@ -110,6 +120,16 @@
     (super-new)
 
     (define/public (get-page-type) 'post)
+
+    (define/public (render-page-html)
+      (define content-html (render-content-html))
+      ((get-page-renderer) this content-html))
+
+    (define/public (render-content-html)
+      ((get-post-renderer) this))
+
+    (define/public (render-index-entry-html)
+      ((get-index-entry-renderer) this))
 
     (define/public (get-title-html) (xexpr->html (get-title-xexpr)))
     (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
