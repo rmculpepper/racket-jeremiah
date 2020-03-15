@@ -168,16 +168,8 @@
         [else (error 'get-draft-permalink-pattern "not set")]))
 
 (define page-renderer (make-parameter #f))
-(define (get-page-renderer)
-  (or (page-renderer) (error 'get-page-renderer "not set")))
-
 (define post-renderer (make-parameter #f))
-(define (get-post-renderer)
-  (or (post-renderer) (error 'get-post-renderer "not set")))
-
 (define index-entry-renderer (make-parameter #f))
-(define (get-index-entry-renderer)
-  (or (index-entry-renderer) (error 'get-index-entry-renderer "not set")))
 
 ;; ============================================================
 ;; Write phase state

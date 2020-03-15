@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="@(send site link)/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/custom.css">
+    @(send page get-header-html)
+  </head>
+  <body>
+
+    <nav class="navbar navbar-expand-md navbar-dark bg-primary">
+      <div class="container">
+      <a href="@(send site link)/" class="navbar-brand">@(site-title)</a>
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+              data-target="#navbar_collapse" aria-controls="navbar_collapse"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbar_collapse">
+          <ul class="navbar-nav mr-auto">
+            @(define (craft-tag-link tag)
+                @list{<a class="dropdown-item" href="@(build-link (get-tag-url tag))">
+                        @(xexpr->html tag)
+                      </a>})
+            <li class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                Tags <b class="caret"></b>
+              </a>
+              <div class="dropdown-menu">
+                @(map craft-tag-link (send site get-tags))
+              </div>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="@(send page get-feed-link)">Atom</a>
+            </li>
+          </ul>
+      </div>
+      </div>
+    </nav>
+
+    <div class="container">
+      <div class="row">
+        @;{ Remember that Twitter Bootstrap has a 12 cell model. The
+            col-md-N classes should add up to 12.  For instance 3
+            "col-md-4" divs, or 2 "col-md-6" divs. }
+        <!-- Main column -->
+        <div id="content" class="col-md-12">
+          @(when (and (send page is-page-type? 'index) (not (send page get-tag)))
+             @list{<h1>Posts</h1>})
+          @(when (and (send page is-page-type? 'index) (send page get-tag))
+             @list{<h1>Posts tagged <em>@(xexpr->html (send page get-tag))</em></h1>})
+
+          @|content-html|
+
+          @(send page get-pagination-html)
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript" src="@(send site link)/js/jquery-3.4.1.slim.min.js"></script>
+    <script type="text/javascript" src="@(send site link)/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

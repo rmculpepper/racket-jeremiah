@@ -22,6 +22,11 @@
 
     ;; Rendering utilities for use by templates, etc
 
+    (define/public (tags->links-html tags)
+      (xexprs->html (tags->links-xexprs tags)))
+    (define/public (tags->links-xexprs tags)
+      (add-between (map (lambda (t) (tag->link-xexpr t)) tags) ", "))
+
     (define/public (tag->link-html tag)
       (xexpr->html (tag->link-xexpr tag)))
     (define/public (tag->link-xexpr tag)
@@ -30,7 +35,7 @@
     (define/public (date->html d)
       (xexpr->html (date->xexpr d)))
     (define/public (date->xexpr d)
-      `(time ([datetime ,d]) ,d))
+      (if d `(time ([datetime ,d]) ,d) `(span)))
     ))
 
 ;; ============================================================
@@ -70,7 +75,7 @@
 
     (define/public (render-page-html)
       (define content-html (render-content-html))
-      ((get-page-renderer) this content-html))
+      ((or (page-renderer) default-page-renderer) this content-html))
 
     (define/public (render-content-html)
       (define rendered-posts
@@ -146,10 +151,10 @@
 
     (define/public (render-page-html)
       (define content-html (render-content-html))
-      ((get-page-renderer) this content-html))
+      ((or (page-renderer) default-page-renderer) this content-html))
 
     (define/public (render-content-html)
-      ((get-post-renderer) this))
+      ((or (post-renderer) default-post-renderer) this))
 
     (define/public (render-index-entry-html)
       ((or (index-entry-renderer) default-index-entry-renderer) this))
@@ -158,19 +163,6 @@
     (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
     (define/public (get-body-html) (xexprs->html (get-body-xexprs)))
     (define/public (get-header-html) (xexprs->html (get-header-xexprs)))
-
-    ;; DELETE ME
-    (define/public (get-authors-html) (xexprs->html (get-authors-xexprs)))
-    (define/public (get-date-html) (xexpr->html (get-date-xexpr)))
-    (define/public (get-tags-html) (xexpr->html (get-tags-xexpr)))
-    (define/public (get-authors-xexprs)
-      (define (author->xexpr a) `(span ([class "author"]) ,a))
-      (add-between (map author->xexpr (get-authors)) ", "))
-    (define/public (get-date-xexpr)
-      (let ([d (get-date)]) `(time ([datetime ,d] [pubdate "true"]) ,d)))
-    (define/public (get-tags-xexpr)
-      '(FIXME)
-      #;`(span ([class "tags"]) ,@(add-between (map tag->xexpr (get-tags)) ", ")))
 
     (define/public (get-header-xexprs)
       `((title ,(get-title))
@@ -234,6 +226,12 @@
 
   (define (default-index-entry-renderer post)
     (define site (the-site))
-    (include-template "../template/index-entry.html")))
+    (include-template "../template/index-entry.html"))
+  (define (default-post-renderer post)
+    (define site (the-site))
+    (include-template "../template/post.html"))
+  (define (default-page-renderer page content-html)
+    (define site (the-site))
+    (include-template "../template/page.html")))
 
 (require (submod "." default-renderers))

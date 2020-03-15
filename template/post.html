@@ -1,0 +1,12 @@
+<article>
+  <header>
+    <h1>@(send post get-title-html)</h1>
+    <p class='date-and-tags'>
+      @(send site date->html (send post get-date))
+      @(send site tags->links-html (send post get-tags))
+    </p>
+    <p class='authors'>By: @(add-between (send post get-authors) ", ")</p>
+  </header>
+  @(send post get-body-html)
+  @;{ <footer></footer> }
+</article>

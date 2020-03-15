@@ -1,0 +1,14 @@
+<article>
+  <header>
+    <h2><a href='@(send post get-link)'>@(send post get-title-html)</a></h2>
+    <p class='date-and-tags'>
+      @(send site date->html (send post get-date))
+      <span class="tags">@(send site tags->links-html (send post get-tags))</span>
+    </p>
+    @(unless (equal? (send post get-authors) (list (site-author)))
+       @list{<p class='authors'>By: @(add-between (send post get-authors) ", ")</p>})
+  </header>
+  @(send post get-blurb-html)
+  @(when (send post get-more?)
+    @list{<footer><a href='@(send post get-link)'>&hellip; more &hellip;</a></footer>})
+</article>
