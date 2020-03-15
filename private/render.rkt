@@ -72,7 +72,7 @@
 
     (define/public (render-page-html)
       (define content-html (render-content-html))
-      ((or (page-renderer) default-page-renderer) this content-html))
+      ((page-renderer) this content-html))
 
     (define/public (render-content-html)
       (define rendered-posts
@@ -119,13 +119,13 @@
 
     (define/public (render-page-html)
       (define content-html (render-content-html))
-      ((or (page-renderer) default-page-renderer) this content-html))
+      ((page-renderer) this content-html))
 
     (define/public (render-content-html)
-      ((or (post-renderer) default-post-renderer) this))
+      ((post-renderer) this))
 
     (define/public (render-index-entry-html)
-      ((or (index-entry-renderer) default-index-entry-renderer) this))
+      ((index-entry-renderer) this))
 
     (define/public (get-title-html) (xexpr->html (get-title-xexpr)))
     (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))
@@ -149,28 +149,3 @@
                       (list `(link ([rel "next"] [href ,(send next get-link)]))))]
                 [else null])))
     ))
-
-
-;; ============================================================
-
-(module default-renderers racket/base
-  (require web-server/templates
-           racket/class
-           racket/list
-           racket/string
-           net/url-structs
-           "../config.rkt"
-           "xexpr.rkt")
-  (provide (all-defined-out))
-
-  (define (default-index-entry-renderer post)
-    (define site (the-site))
-    (include-template "../template/index-entry.html"))
-  (define (default-post-renderer post)
-    (define site (the-site))
-    (include-template "../template/post.html"))
-  (define (default-page-renderer page content-html)
-    (define site (the-site))
-    (include-template "../template/page.html")))
-
-(require (submod "." default-renderers))

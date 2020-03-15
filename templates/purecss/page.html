@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="@(send site link)/favicon.ico">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@"@"1.0.1/build/pure-min.css"
+          integrity="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47"
+          crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://unpkg.com/purecss@"@"1.0.1/build/grids-responsive-min.css"
+          integrity="sha384-e+NM0rMilIXo+lz6+dXhoHMjd2iTSxNsCHpqkvuSBsAhwMDRF/Wn2QRRNaLxTcN/"
+          crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/pure-blog.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/pygments.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/scribble.css">
+    <link rel="stylesheet" type="text/css" href="@(send site link)/css/custom.css">
+    @(send page get-header-html)
+  </head>
+  <body>
+
+    <div id="layout" class="pure-g">
+      <div class="sidebar pure-u-1 pure-u-md-1-4">
+        <div class="header">
+          <h1 class="brand-title"><a href="@(send site link)/">@(site-title)</a></h1>
+          <h2 class="brand-tagline">the blog of @(site-author)</h2>
+
+          <nav class="nav">
+            <ul class="nav-list">
+              @(let ()
+                 (define (tag-link tag)
+                   @list{<li class="nav-item">
+                           <a class="pure-button" href="@(get-tag-link tag)">@(xexpr->html tag)</a>
+                         </li>})
+                 (map tag-link (send site get-tags)))
+            </ul>
+          </nav>
+          <div>
+            <a class="nav-link" href="@(send page get-feed-link)">Atom</a>
+          </div>
+        </div>
+      </div>
+      <div class="content pure-u-1 pure-u-md-3-4">
+        <div class="posts">
+          @(when (and (send page is-page-type? 'index) (not (send page get-tag)))
+             @list{<h1 class="content-subhead">Posts</h1>})
+          @(when (and (send page is-page-type? 'index) (send page get-tag))
+             @list{<h1 class="content-subhead">Posts tagged 
+                     <em>@(xexpr->html (send page get-tag))</em>
+                   </h1>})
+
+          @|content-html|
+
+          @(when (send page is-page-type? 'index) (include-template "index-pagination.html"))
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
