@@ -1,27 +1,16 @@
 #lang racket/base
 (require racket/runtime-path
-         racket/string
-         racket/class
          jeremiah/config
-         (only-in jeremiah/private/data xexpr->html)
-         net/url
-         web-server/templates)
+         net/url-structs)
 
 (define-runtime-path root ".")
 (root-dir root)
 (base-url (string->url "https://mysite.com/"))
 
+(site-author "Me, the Example User")
+(site-title "My Blog")
+
+;; Atom feeds and entries are identified using the tag URI scheme
+;; (see https://taguri.org/, RFC 4151).
 (tag-uri-entity "me@mysite.com,2020")
-(tag-uri-prefix "blog")
-
-(page-renderer
- (lambda (page content-html site)
-   (include-template "page-template.html")))
-
-(post-renderer
- (lambda (post prev-post next-post)
-   (include-template "post-template.html")))
-
-(index-entry-renderer
- (lambda (post)
-   (include-template "index-entry-template.html")))
+(tag-uri-prefix "myblog")
