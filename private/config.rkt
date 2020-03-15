@@ -40,6 +40,7 @@
 ;; Directories
 
 (define root-dir (make-parameter #f))
+(define pre-static-src-dirs (make-parameter null))
 
 (define (get-root-dir #:who [who 'get-root-dir])
   (or (root-dir) (error who "root directory not set")))

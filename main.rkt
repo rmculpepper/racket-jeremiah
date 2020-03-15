@@ -44,13 +44,9 @@
     ;; (delete-directory/files (get-dest-dir))
 
     ;; Copy static resources
-    (parameterize ((current-directory (get-static-src-dir)))
-      (for ([file (in-list (find-files file-exists?))])
-        (define src-file (build-path (get-static-src-dir) file))
-        (define dest-file (build-path (get-dest-dir) file))
-        (make-parent-directory* dest-file)
-        (when (file-exists? dest-file) (delete-file dest-file))
-        (copy-file src-file dest-file)))
+    (for ([src-dir (in-list (reverse (pre-static-src-dirs)))])
+      (copy-static-files src-dir (get-dest-dir)))
+    (copy-static-files (get-static-src-dir) (get-dest-dir))
 
     ;; Write posts
     (for ([post (in-list posts)] #:when (send post render?))
@@ -79,6 +75,17 @@
                    (j-error "duplicate post name\n  path: ~e\n  previous path: ~e"
                             (postsrc-path src) (postsrc-path prev-src)))]
              [else (hash-set! seen (postsrc-name src) src)])))))
+
+;; copy-static-files : Path Path -> Void
+(define (copy-static-files src-dir dest-dir)
+  (when (directory-exists? src-dir)
+    (parameterize ((current-directory src-dir))
+      (for ([file (in-list (find-files file-exists?))]) ;; FIXME: copy links?
+        (define src-file (build-path src-dir file))
+        (define dest-file (build-path dest-dir file))
+        (make-parent-directory* dest-file)
+        (when (file-exists? dest-file) (delete-file dest-file))
+        (copy-file src-file dest-file)))))
 
 ;; read-post : PostSrc -> Post
 (define (read-post src #:who [who 'read-post])
