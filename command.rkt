@@ -49,6 +49,7 @@
              (uerror "default site file does not exist\n  file: ~e" SITE-FILE))
            (path->complete-path SITE-FILE)]))
   ;; Load site config file
+  (log-jeremiah-debug "loading site configuration: ~e" config-path)
   (dynamic-require config-path #f))
 
 

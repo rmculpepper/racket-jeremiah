@@ -17,20 +17,31 @@
 
 ;; go : -> Void
 (define (go)
+  (log-jeremiah-info "The post source dir is ~e" (get-post-src-dir))
+  (log-jeremiah-info "The post cache dir is ~e" (get-post-cache-dir))
+  (log-jeremiah-info "The output dir is ~e" (get-dest-dir))
+
   ;; Find all post sources
   ;; FIXME: generalize to multiple dirs?
+  (log-jeremiah-info "Finding post sources")
   (define post-src-paths (find-files post-src-path? (get-post-src-dir)))
+  (for ([path (in-list post-src-paths)])
+    (log-jeremiah-debug "found post source: ~e" path))
+  (log-jeremiah-info "Found ~s post sources" (length post-src-paths))
 
   (define srcs (map path->postsrc post-src-paths))
   (check-duplicate-post-src srcs)
 
   ;; First, build to cache
+  (log-jeremiah-info "Building posts")
   (with-delay-exceptions
     (for ([src (in-list srcs)])
       (delay-exception (build/cache-post src))))
+  (log-jeremiah-info "Finished building posts")
 
   ;; Read metadata from cache, build index
   (define posts (map read-post srcs))
+  (log-jeremiah-info "Read ~s built posts" (length posts))
   (define site (new render-site% (posts posts)))
   (define index (send site get-index))
 
@@ -40,25 +51,35 @@
     ;; (delete-directory/files (get-dest-dir))
 
     ;; Copy static resources
+    (log-jeremiah-info "Copying static resources")
     (for ([src-dir (in-list (reverse (pre-static-src-dirs)))])
       (copy-static-files src-dir (get-dest-dir)))
     (copy-static-files (get-static-src-dir) (get-dest-dir))
+    (log-jeremiah-info "Finished copying static resources")
 
     ;; Write posts
+    (log-jeremiah-info "Writing posts")
     (for ([post (in-list posts)] #:when (send post render?))
       (write-post post))
+    (log-jeremiah-info "Finished writing posts")
 
-    ;; Write main index and feed
-    (write-index index)
-    (write-atom-feed index)
+    ;; Write indexes and feeds
+    (log-jeremiah-info "Writing indexes and feeds")
+    (begin
+      ;; Write main index and feed
+      (log-jeremiah-debug "Writing main index and feed")
+      (write-index index)
+      (write-atom-feed index)
+      ;; Write tag indexes and feeds
+      (for ([tag (in-list (send site get-tags))])
+        (log-jeremiah-debug "Writing index and feed for tag: ~e" tag)
+        (define tag-index (send site get-tag-index tag))
+        (write-index tag-index)
+        (write-atom-feed tag-index)))
 
-    ;; Write tag indexes and feeds
-    (for ([tag (in-list (send site get-tags))])
-      (define tag-index (send site get-tag-index tag))
-      (write-index tag-index)
-      (write-atom-feed tag-index))
-
-    posts))
+    ;; Done
+    (log-jeremiah-info "Done")
+    (void)))
 
 ;; check-duplicate-post-src : (Listof postsrc) -> Void
 (define (check-duplicate-post-src srcs)

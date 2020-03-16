@@ -55,20 +55,19 @@
   (match-define (postsrc path name cachedir) src)
   (define src-timestamp (file-or-directory-modify-seconds path))
   (define cache-timestamp (read-cache-timestamp cachedir))
-  (when #f
-    (eprintf "cache ~s ~a src ~s\n"
-             cache-timestamp
-             (if (< cache-timestamp src-timestamp) '< '>)
-             src-timestamp))
   ;; FIXME: what about scribble file that depends on modified lib?
-  (unless (> cache-timestamp src-timestamp)
-    (make-directory* cachedir)
-    (build-post path cachedir)))
+  (cond [(> cache-timestamp src-timestamp)
+         (log-jeremiah-debug "skipping cached post: ~e" path)]
+        [else
+         (log-jeremiah-info "building post: ~e" path)
+         (make-directory* cachedir)
+         (build-post path cachedir)]))
 
 ;; read-post-info : PostSrc -> (values Meta XExprs Boolean)
 ;; Reads info about a built post from its cache.
 (define (read-post-info src #:who [who 'read-post-info])
   (match-define (postsrc path name cachedir) src)
+  (log-jeremiah-debug "reading post from cache: ~e" cachedir)
   (define-values (_ts meta blurb more?)
     (with-input-from-file (build-path cachedir "_cache.rktd")
       (lambda ()

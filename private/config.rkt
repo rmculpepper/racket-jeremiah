@@ -5,6 +5,8 @@
          net/url)
 (provide (all-defined-out))
 
+(define-logger jeremiah)
+
 ;; ============================================================
 ;; Terminology
 
