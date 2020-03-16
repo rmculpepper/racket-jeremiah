@@ -3,10 +3,10 @@
          racket/class
          racket/file
          "config.rkt"
-         "private/data.rkt"
-         "private/build.rkt"
-         "private/render.rkt"
-         "private/write.rkt")
+         "data.rkt"
+         "build.rkt"
+         "render.rkt"
+         "write.rkt")
 
 ;; ----------------------------------------
 
