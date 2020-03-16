@@ -236,13 +236,13 @@
 ;; - 'title-xexpr : XExpr -- text or span element containing rendered title
 ;;       -- NOTE: currently disabled, because it looks weird (maybe just CSS issue?)
 ;; - 'date : String -- should have form "YYYY-MM-DD"
-;; - 'author : String (comma-separated)
+;; - 'authors : String (comma-separated)
 ;; - 'tags : String (comma-separated)
 ;; - 'display : "index" | "draft" | "norender"
 
 ;; Metadata is gathered from the following sources (earlier overrides later):
 ;; - header   -- * (except title-xexpr)
-;; - content  -- author, title, title-xexpr (only from Scribble)
+;; - content  -- authors, title, title-xexpr (only from Scribble)
 ;; - path     -- date, display
 
 (define reserved-tags '("all" "index" "draft")) ;; FIXME?
@@ -260,7 +260,7 @@
     [(? string? d) (error 'metadata-date "bad date: ~e" d)]
     [#f #f]))
 (define (metadata-authors h)
-  (string-split (hash-ref h 'author "") #rx"[ *],[ ]*" #:trim? #t))
+  (string-split (hash-ref h 'authors "") #rx"[ *],[ ]*" #:trim? #t))
 (define (metadata-tags h)
   (string-split (hash-ref h 'tags "") #rx"[ ]*,[ ]*" #:trim? #t))
 (define (metadata-display h)

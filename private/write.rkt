@@ -26,7 +26,9 @@
   (parameterize ((current-directory (send post get-cachedir)))
     (for ([file (in-list (find-files file-exists?))]
           #:when (not (dont-copy-file? file)))
-      (copy-file file (build-path (send post get-out-dir) file)))))
+      (define dest-file (build-path (send post get-out-dir) file))
+      (when (file-exists? dest-file) (delete-file dest-file))
+      (copy-file file dest-file))))
 
 (define (dont-copy-file? path)
   (regexp-match? #rx"^_" (path->string (file-name-from-path path))))

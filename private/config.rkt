@@ -39,15 +39,15 @@
 
 ;; Directories
 
-(define root-dir (make-parameter #f))
+(define base-dir (make-parameter #f))
 (define pre-static-src-dirs (make-parameter null))
 
-(define (get-root-dir #:who [who 'get-root-dir])
-  (or (root-dir) (error who "root directory not set")))
+(define (get-base-dir #:who [who 'get-base-dir])
+  (or (base-dir) (error who "base directory not set")))
 
 (define-syntax-rule (define-get-path (getter x ...) relpath ...)
   (define (getter x ... #:who [who 'getter])
-    (build-path (get-root-dir #:who who) relpath ...)))
+    (build-path (get-base-dir #:who who) relpath ...)))
 
 (define-get-path (get-static-src-dir) "static")
 (define-get-path (get-post-src-dir)   "posts")
@@ -59,7 +59,7 @@
 
 ;; URL
 
-;; root-url : (Parameterof URL) -- not string!
+;; base-url : (Parameterof URL) -- not string!
 (define base-url (make-parameter #f))
 
 (define (get-base-url #:who [who 'get-full-base-url])

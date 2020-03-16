@@ -163,7 +163,7 @@
   (define meta-h (merge-metadata header-meta-h body-meta-h path-meta-h))
   ;; Split out the blurb (may be less than the entire body)
   (define-values (blurb more?) (above-the-fold body))
-  (define body* (enhance-body body))
+  (define body* (enhance-body (filter (lambda (x) (not (more-xexpr? x))) body)))
   (define blurb* (enhance-body blurb))
   ;; Write files to cachedir
   (with-output-to-file (build-path cachedir "_index.rktd") #:exists 'replace
@@ -186,7 +186,7 @@
 
 (define (more-xexpr? x)
   (match x
-    ['(div ([class "more-content-separator"])) #t]
+    [`(!HTML-COMMENT () ,(regexp #rx"[ ]*more[ ]*")) #t]
     [_ #f]))
 
 (define (enhance-body xs)
@@ -278,7 +278,8 @@
             [`(div ([class "SAuthorListBox"])
                    (span ([class "SAuthorList"]) . ,_)
                    ,@(list `(p ([class "author"]) ,(? string? authors)) ...))
-             (set! meta-h (hash-set meta-h 'author (string-join authors ", ")))]
+             ;; FIXME ???
+             (set! meta-h (hash-set meta-h 'authors (string-join authors ", ")))]
             [_ (void)])
           '()]
          ;; Delete title; record title in meta-h
@@ -302,7 +303,7 @@
          [`(h6 . ,x) `[(h5 ,@x)]]
          ;; Turn <!--more--> into html comment
          [`(p () "<" "!" ndash " more " ndash ">")
-          '[(div ([class "more-content-separator"]))]]
+          '[(!HTML-COMMENT () "more")]]
          [x (list x)]))
      xs))
   (values xs* meta-h))
