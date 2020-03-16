@@ -2,6 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    @;{ Semantic information }
+    <title>@$h[(send page get-title)]</title>
+    @;{ <meta name="description" content=""> }
+    <meta name="keywords" content="@$a[(send page get-keywords)]">
+    <meta name="canonical" href="@$a[(build-link #:local? #f (send page get-url))]">
+    <meta rel="alternate" type="application/atom+xml" title="Atom Feed"
+          href="@$a[(send page get-feed-link)]">
+    @$try{<link rel="prev" href="@$a[(or (send page get-prev-link) ($cancel))]">}
+    @$try{<link rel="next" href="@$a[(or (send page get-next-link) ($cancel))]">}
+    @;{ Display information }
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="@(send site link)/favicon.png">
     <link rel="stylesheet"
@@ -27,7 +37,7 @@
           <ul class="navbar-nav mr-auto">
             @(define (craft-tag-link tag)
                 @list{<a class="dropdown-item" href="@(build-link (get-tag-url tag))">
-                        @(xexpr->html tag)
+                        @($h tag)
                       </a>})
             <li class="nav-item dropdown">
               <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
@@ -55,7 +65,7 @@
           @(when (and (send page is-page-type? 'index) (not (send page get-tag)))
              @list{<h1>Posts</h1>})
           @(when (and (send page is-page-type? 'index) (send page get-tag))
-             @list{<h1>Posts tagged <em>@(xexpr->html (send page get-tag))</em></h1>})
+             @list{<h1>Posts tagged <em>@$h[(send page get-tag)]</em></h1>})
 
           @|content-html|
 

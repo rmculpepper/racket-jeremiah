@@ -141,6 +141,8 @@
               [else (build-url (get-base-url) (get-dest-file-name n))])))
     (define/public (get-link [n page-num])
       (build-link #:local? #t (get-url n)))
+    (define/public (get-full-link [n page-num])
+      (build-link #:local? #f (get-url n)))
 
     (define/public (get-page-url) (get-url))
     (define/public (get-page-link) (get-link))
