@@ -1,0 +1,18 @@
+    Title: A blog post using markdown template
+    Date: 2015-10-26T00:00:00
+    Tags: Racket
+
+@; Unlike Frog, the metadata is read before the template is evaluated,
+@; so it is not okay to put definitions, etc above the metadata.
+
+@(define x 42)
+
+This file has a `.mdt` extension, meaning it will first be evaluated
+as a template, and the resulting text is provided to the markdown
+parser.
+
+For example `@"@+[1 1]"` evaluates to @+[1 1].
+
+<!-- more -->
+
+That was it, really.
