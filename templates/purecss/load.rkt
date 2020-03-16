@@ -20,7 +20,7 @@
            racket/string
            net/url-structs
            jeremiah/config
-           jeremiah/private/xexpr)
+           jeremiah/util)
   (index-entry-renderer
    (lambda (post)
      (define site (the-site))
