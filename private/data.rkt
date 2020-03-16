@@ -18,22 +18,38 @@
 
 (define site%
   (class object%
-    (init-field index)
+    (init-field posts
+                [the-index% index%])
     (super-new)
 
-    (define/public (get-index) index)
+    (define tags
+      (let ([h (make-hash)])
+        (for ([post (in-list posts)]
+              #:when (send post index?)
+              [tag (in-list (send post get-tags))]
+              #:when (not (member tag reserved-tags)))
+          (hash-set! h tag #t))
+        (sort (hash-keys h) string<?)))
 
-    (define/public (get-tags)
-      (define h (make-hash))
-      (for ([post (in-list (send index get-posts))]
-            #:when (send post index?)
-            [tag (in-list (send post get-tags))]
-            #:when (not (member tag reserved-tags)))
-        (hash-set! h tag #t))
-      (sort (hash-keys h) string<?))
+    (define tag=>index ;; includes #f => main index
+      (for/hash ([tag (in-list (cons #f tags))])
+        (values tag (build-index tag posts))))
 
-    (define/public (get-prev-post post) (send index get-prev post))
-    (define/public (get-next-post post) (send index get-next post))
+    (define/public (get-post) posts)
+    (define/public (get-tags) tags)
+    (define/public (get-index) (hash-ref tag=>index #f)) ;; #f = main index
+    (define/public (get-tag-index tag) (hash-ref tag=>index tag #f))
+
+    (define/public (get-prev-post post) (send (get-index) get-prev post))
+    (define/public (get-next-post post) (send (get-index) get-next post))
+
+    ;; build-index : String/#f (Listof Post) -> Index
+    (define/private (build-index tag posts)
+      (define sorted-posts
+        (sort (filter (lambda (post) (send post index? tag)) posts)
+              string>?
+              #:key (lambda (post) (send post sortkey))))
+      (new the-index% (tag tag) (posts sorted-posts)))
 
     ;; ----------------------------------------
     ;; Utils for site.rkt and templates

@@ -35,8 +35,8 @@
 
   ;; Read metadata from cache, build index
   (define posts (map read-post srcs))
-  (define index (build-index #f posts))
-  (define site (new render-site% (index index)))
+  (define site (new render-site% (posts posts)))
+  (define index (send site get-index))
 
   (parameterize ((the-site site))
 
@@ -58,7 +58,7 @@
 
     ;; Write tag indexes and feeds
     (for ([tag (in-list (send site get-tags))])
-      (define tag-index (build-index tag posts))
+      (define tag-index (send site get-tag-index tag))
       (write-index tag-index)
       (write-atom-feed tag-index))
 
@@ -91,14 +91,6 @@
 (define (read-post src #:who [who 'read-post])
   (define-values (meta blurb more?) (read-post-info src #:who who))
   (new render-post% (src src) (meta meta) (blurb blurb) (more? more?)))
-
-;; build-index : String/#f (Listof Post) -> Index
-(define (build-index tag posts)
-  (define sorted-posts
-    (sort (filter (lambda (post) (send post index? tag)) posts)
-          string>?
-          #:key (lambda (post) (send post sortkey))))
-  (new index% (tag tag) (posts sorted-posts)))
 
 
 ;; ----------------------------------------
