@@ -1,8 +1,8 @@
 #lang racket/base
-(require racket/class
+(require racket/stxparam
+         racket/class
          racket/file
          "config.rkt"
-         "util.rkt"
          "private/data.rkt"
          "private/build.rkt"
          "private/render.rkt"
@@ -72,8 +72,9 @@
       (delay-exception
        (cond [(hash-ref seen (postsrc-name src) #f)
               => (lambda (prev-src)
-                   (j-error "duplicate post name\n  path: ~e\n  previous path: ~e"
-                            (postsrc-path src) (postsrc-path prev-src)))]
+                   (error 'jeremiah
+                          "duplicate post name\n  path: ~e\n  previous path: ~e"
+                          (postsrc-path src) (postsrc-path prev-src)))]
              [else (hash-set! seen (postsrc-name src) src)])))))
 
 ;; copy-static-files : Path Path -> Void
@@ -94,6 +95,31 @@
 
 
 ;; ----------------------------------------
+
+(define-syntax-parameter delay-exception (syntax-rules ()))
+
+(define-syntax-rule (with-delay-exceptions . body)
+  (call/call/delay-exception
+   (lambda (c/de)
+     (syntax-parameterize ((delay-exception
+                            (syntax-rules ()
+                              [(_ . inner)
+                               (c/de (lambda () . inner))])))
+       . body))))
+
+(define (call/call/delay-exception proc)
+  (define exns null) ;; (Listof Exn), mutated
+  (define (call/delay-exception inner-proc)
+    (with-handlers ([exn:fail? (lambda (e) (set! exns (cons e exns)))])
+      (inner-proc)))
+  (proc call/delay-exception)
+  (when (pair? exns)
+    (for ([e (in-list (reverse exns))])
+      ((error-display-handler) (exn-message e) e))
+    (error 'jeremiah "~s errors, exiting" (length exns))))
+
+;; ----------------------------------------
+
 (require racket/lazy-require)
 (lazy-require ["private/preview.rkt" (preview)])
 (provide preview)
