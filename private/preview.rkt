@@ -2,16 +2,18 @@
 (require web-server/dispatchers/dispatch
          web-server/servlet-env
          racket/file
+         net/url
          "config.rkt")
 (provide preview)
 
 (define PORT 3500)
 
-(define (preview [root (get-dest-dir)])
+(define (preview #:dir [dir (get-dest-dir)]
+                 #:url [url (get-base-url)])
   (ensure-external-browser-preference)
   (serve/servlet (lambda (_) (next-dispatcher))
-                 #:servlet-path (build-link #:local? #t (get-base-url))
-                 #:extra-files-paths (list (get-dest-dir))
+                 #:servlet-path (url->string (local-url url))
+                 #:extra-files-paths (list dir)
                  #:port PORT
                  #:listen-ip #f
                  #:launch-browser? #t))

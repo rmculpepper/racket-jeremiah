@@ -7,6 +7,7 @@
          "build.rkt"
          "render.rkt"
          "write.rkt")
+(provide go)
 
 ;; ----------------------------------------
 
@@ -15,12 +16,7 @@
 ;; FIXME: option to only update cache, avoid writing to dest-dir?
 
 ;; go : -> Void
-(define (go [dir (current-directory)])
-
-  ;; Load site.rkt for configuration
-  (parameterize ((current-directory (path->complete-path dir)))
-    (dynamic-require (build-path (current-directory) "site.rkt") #f))
-
+(define (go)
   ;; Find all post sources
   ;; FIXME: generalize to multiple dirs?
   (define post-src-paths (find-files post-src-path? (get-post-src-dir)))
@@ -117,9 +113,3 @@
     (for ([e (in-list (reverse exns))])
       ((error-display-handler) (exn-message e) e))
     (error 'jeremiah "~s errors, exiting" (length exns))))
-
-;; ----------------------------------------
-
-(require racket/lazy-require)
-(lazy-require ["private/preview.rkt" (preview)])
-(provide preview)
