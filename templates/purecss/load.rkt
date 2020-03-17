@@ -30,7 +30,7 @@
      (define site (the-site))
      (include-template "post.html")))
   (page-renderer
-   (lambda (page content-html)
+   (lambda (page)
      (define site (the-site))
      (include-template "page.html"))))
 

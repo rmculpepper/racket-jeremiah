@@ -69,7 +69,7 @@
           @(when (and (send page is-page-type? 'index) (send page get-tag))
              @list{<h1>Posts tagged <em>@$h[(send page get-tag)]</em></h1>})
 
-          @|content-html|
+          @(send page render-content-html)
 
           @(when (send page is-page-type? 'index) (include-template "index-pagination.html"))
         </div>

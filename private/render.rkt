@@ -63,6 +63,8 @@
     get-feed-link  ;; -> String
     get-prev-link  ;; -> String/#f
     get-next-link  ;; -> String/#F
+
+    render-content-html ;; -> String
     ))
 
 
@@ -79,8 +81,7 @@
     (define/public (is-page-type? type) (eq? (get-page-type) type))
 
     (define/public (render-page-html)
-      (define content-html (render-content-html))
-      ((page-renderer) this content-html))
+      ((page-renderer) this))
 
     (define/public (render-content-html)
       (define rendered-posts
@@ -116,8 +117,7 @@
     (define/public (is-page-type? type) (eq? (get-page-type) type))
 
     (define/public (render-page-html)
-      (define content-html (render-content-html))
-      ((page-renderer) this content-html))
+      ((page-renderer) this))
 
     (define/public (render-content-html)
       ((post-renderer) this))

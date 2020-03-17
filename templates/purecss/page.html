@@ -68,7 +68,7 @@
                      </h1>
                    </div>})
 
-          @|content-html|
+          @(send page render-content-html)
 
           @(when (send page is-page-type? 'index) (include-template "index-pagination.html"))
         </div>

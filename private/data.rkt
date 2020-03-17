@@ -22,18 +22,22 @@
                 [the-index% index%])
     (super-new)
 
-    (define tags
-      (let ([h (make-hash)])
-        (for ([post (in-list posts)]
-              #:when (send post index?)
-              [tag (in-list (send post get-tags))]
-              #:when (not (member tag reserved-tags)))
-          (hash-set! h tag #t))
-        (sort (hash-keys h) string-ci<?)))
-
     (define tag=>index ;; includes #f => main index
-      (for/hash ([tag (in-list (cons #f tags))])
-        (values tag (build-index tag posts))))
+      (let ([tag=>posts (make-hash)])
+        (for ([post (in-list posts)] #:when (send post index?))
+          (for ([tag (in-list (cons #f (send post get-tags)))]
+                #:when (not (member tag reserved-tags)))
+            (hash-update! tag=>posts tag (lambda (ps) (cons post ps)) null)))
+        (for/hash ([(tag posts) (in-hash tag=>posts)])
+          (values tag (build-index tag posts)))))
+
+    (define tags (sort (filter string? (hash-keys tag=>index)) string-ci<?))
+
+    (let ([h (make-hash)])
+      (for ([t (in-list tags)])
+        (hash-update! h (string-foldcase t) (lambda (ts) (cons t ts)) null))
+      (for ([(k ts) (in-hash h)] #:when (> (length ts) 1))
+        (log-jeremiah-error "tag collision: ~s" ts)))
 
     (define/public (get-posts) posts)
     (define/public (get-tags) tags)
@@ -44,11 +48,10 @@
     (define/public (get-next-post post) (send (get-index) get-next post))
 
     ;; build-index : String/#f (Listof Post) -> Index
+    ;; PRE: (send post index?) is true for each post in posts
     (define/private (build-index tag posts)
       (define sorted-posts
-        (sort (filter (lambda (post) (send post index? tag)) posts)
-              string>?
-              #:key (lambda (post) (send post sortkey))))
+        (sort posts string>? #:key (lambda (post) (send post sortkey))))
       (new the-index% (tag tag) (posts sorted-posts)))
 
     ;; ----------------------------------------
