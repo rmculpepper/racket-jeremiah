@@ -176,6 +176,12 @@
     (define/public (get-blurb-xexprs) blurb)
     (define/public (get-more?) more?)
 
+    (define/public (get-source-type)
+      (match (path->string (postsrc-path src))
+        [(regexp "[.]scrbl$") 'scribble]
+        [(regexp "[.]md[t]?$") 'markdown]
+        [_ #f]))
+
     (define/public (get-title) (metadata-title meta))
     (define/public (get-title-xexpr) (metadata-title-xexpr meta))
     (define/public (get-authors)
