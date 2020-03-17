@@ -29,13 +29,13 @@
               [tag (in-list (send post get-tags))]
               #:when (not (member tag reserved-tags)))
           (hash-set! h tag #t))
-        (sort (hash-keys h) string<?)))
+        (sort (hash-keys h) string-ci<?)))
 
     (define tag=>index ;; includes #f => main index
       (for/hash ([tag (in-list (cons #f tags))])
         (values tag (build-index tag posts))))
 
-    (define/public (get-post) posts)
+    (define/public (get-posts) posts)
     (define/public (get-tags) tags)
     (define/public (get-index) (hash-ref tag=>index #f)) ;; #f = main index
     (define/public (get-tag-index tag) (hash-ref tag=>index tag #f))
@@ -191,8 +191,12 @@
 
     (define/public (get-date) ;; short date: YYYY-MM-DD
       (match (metadata-date meta)
-        [(pregexp "^(\\d{4}-\\d{2}-\\d{2})" (list _ d)) d]
+        [(pregexp #px"^(\\d{4}-\\d{2}-\\d{2})" (list _ d)) d]
         [#f (error 'get-date "date not available\n  post: ~a" (about))]))
+    (define/public (get-year) ;; String(4) or #f
+      (match (metadata-date meta)
+        [(pregexp #px"^(\\d{4})" (list _ year)) year]
+        [else #f]))
     (define/public (get-date-object)
       (cond [(metadata-date meta) => string->date/8601]
             [else (error 'get-date-obj "date not available\n  post: ~a" (about))]))
