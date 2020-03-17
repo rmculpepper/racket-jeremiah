@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    @(send site get-extra-html 'start-head page)
     <meta charset="utf-8">
     @;{ Semantic information }
     <title>@$h[(send page get-title)]</title>
@@ -21,8 +22,10 @@
     <link rel="stylesheet" type="text/css" href="@(send site link)/css/pygments.css">
     <link rel="stylesheet" type="text/css" href="@(send site link)/css/scribble.css">
     <link rel="stylesheet" type="text/css" href="@(send site link)/css/custom.css">
+    @(send site get-extra-html 'end-head page)
   </head>
   <body>
+    @(send site get-extra-html 'start-body page)
 
     <nav class="navbar navbar-expand-md navbar-dark bg-primary">
       <div class="container">
@@ -81,5 +84,6 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
             integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
             crossorigin="anonymous"></script>
+    @(send site get-extra-html 'end-body page)
   </body>
 </html>

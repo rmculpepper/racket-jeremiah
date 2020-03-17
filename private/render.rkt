@@ -40,6 +40,9 @@
       (xexpr->html (date->xexpr d)))
     (define/public (date->xexpr d)
       (if d `(time ([datetime ,d]) ,d) `(span)))
+
+    (define/public (get-extra-html location page)
+      ((or (extra-html) void) location page))
     ))
 
 ;; ============================================================

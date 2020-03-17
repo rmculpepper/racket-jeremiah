@@ -174,6 +174,8 @@
 (define post-renderer (make-parameter #f))
 (define index-entry-renderer (make-parameter #f))
 
+(define extra-html (make-parameter #f))
+
 ;; ============================================================
 ;; Write phase state
 

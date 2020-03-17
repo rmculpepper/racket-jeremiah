@@ -1,6 +1,7 @@
-#lang racket/base
+#lang at-exp racket/base
 (require racket/runtime-path
          jeremiah/config
+         jeremiah/util
          net/url)
 
 ;; Use the PureCSS (purecss.io) template. There's also a Bootstrap 4 template,
@@ -44,3 +45,13 @@
 ;;   allocated feed/post IDs, which breaks your Atom feed.
 (tag-uri-entity "me@example.com,2020")
 (tag-uri-prefix "myblog")
+
+;; Hook for inserting extra HTML at various points in the default templates.
+;; Each template defines different locations. Along with CSS, this hook makes
+;; limited customization possible without modifying a template directly.
+;; A hook should return (void) or '() for unknown locations.
+(extra-html
+ (lambda (location page)
+   (case location
+     [(end-body)
+      @list{<div>Built with Jeremiah</div>}])))
