@@ -27,9 +27,9 @@
     (define/public (to-attr s) (xml-attribute-encode s))
 
     (define/public (tags->links-html tags)
-      (xexprs->html (tags->links-xexprs tags)))
+      (string-join (map xexpr->html (add-between (tags->links-xexprs tags) ", ")) ""))
     (define/public (tags->links-xexprs tags)
-      (add-between (map (lambda (t) (tag->link-xexpr t)) tags) ", "))
+      (map (lambda (t) (tag->link-xexpr t)) tags))
 
     (define/public (tag->link-html tag)
       (xexpr->html (tag->link-xexpr tag)))
