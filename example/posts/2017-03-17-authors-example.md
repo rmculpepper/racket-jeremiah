@@ -5,7 +5,7 @@
 
 This is an example of supplying one or authors for a post.
 
-Like a tag, each each author gets their own index page and feed.
+@; Unlike Frog, authors do not act like tags.
 
 In generated RSS and Atom feeds, post author(s) override the default
 `author` setting for the overall blog.
