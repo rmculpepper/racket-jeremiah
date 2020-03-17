@@ -150,8 +150,8 @@
     (match (path->string name)
       [(regexp "[.]scrbl$")
        (build-scribble-post path cachedir)]
-      [(regexp "[.]html$")
-       (read-html-post path)]
+      ;; [(regexp "[.]html$")
+      ;;  (read-html-post path)]
       [(regexp "[.]md$")
        (define footnote-prefix (string->symbol (path->prefix path)))
        (read-markdown-post path #f footnote-prefix)]
@@ -324,12 +324,12 @@
 ;; ------------------------------------------------------------
 ;; HTML Posts
 
-;; read-html-post : Path -> (values XExprs MetaHash MetaHash)
-(define (read-html-post path)
-  (define-values (meta-h body-xs)
-    (call-with-input-file* path
-      (lambda (in)
-        (define meta-h (read-metadata-header 'spaces in))
-        (define body-xs (cddr (read-html-as-xexprs in)))
-        (values meta-h body-xs))))
-  (values body-xs meta-h '#hasheq()))
+;; ;; read-html-post : Path -> (values XExprs MetaHash MetaHash)
+;; (define (read-html-post path)
+;;   (define-values (meta-h body-xs)
+;;     (call-with-input-file* path
+;;       (lambda (in)
+;;         (define meta-h (read-metadata-header 'spaces in))
+;;         (define body-xs (cddr (read-html-as-xexprs in)))
+;;         (values meta-h body-xs))))
+;;   (values body-xs meta-h '#hasheq()))
