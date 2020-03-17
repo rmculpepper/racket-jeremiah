@@ -19,26 +19,20 @@ a:focus {
     text-decoration: underline;
 }
 
-/*
-h3 {
-    font-weight: 100;
-}
-*/
-
 /* LAYOUT CSS */
 .pure-img-responsive {
     max-width: 100%;
     height: auto;
 }
 
-#layout {
+.layout {
     padding: 0;
 }
 
 .header {
     text-align: center;
     top: auto;
-    margin: 3em auto;
+    margin: 3em auto 0.5em auto;
     height: 100%;
 }
 
@@ -47,23 +41,27 @@ h3 {
     color: #fff;
 }
 
-.brand-title,
-.brand-tagline {
+.site-title,
+.site-tagline {
     margin: 0;
 }
-.brand-title {
+.site-title {
     text-transform: uppercase;
 }
-.brand-title a {
+.site-title a {
     color: #fff;
 }
-.brand-tagline {
+.site-title a:hover,
+.site-title a:focus {
+    text-decoration: none;
+}
+.site-tagline {
     font-weight: 300;
     color: rgb(176, 202, 219);
 }
 
 .nav-list {
-    margin: 0;
+    margin: 1em 0 0 0;
     padding: 0;
     list-style: none;
 }
@@ -74,7 +72,7 @@ h3 {
 }
 .nav-item a {
     background: transparent;
-    border: 2px solid rgb(176, 202, 219);
+    border: 2px solid /*rgb(176, 202, 219)*/ rgb(61, 79, 93);
     color: #fff;
     margin-top: 1em;
     letter-spacing: 0.05em;
