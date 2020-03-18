@@ -5,22 +5,10 @@
          net/url)
 (provide (all-defined-out))
 
+;; See the notes in this directory's README.md for some terminology
+;; definitions and implementation naming conventions.
+
 (define-logger jeremiah)
-
-;; ============================================================
-;; Terminology
-
-;; "url" refers to instances of the net/url struct, and "link" refers to the
-;; string representation of a URL. A url or link can be "full" (includes scheme
-;; and host) or "local" (no scheme or host, but absolute path including
-;; prefix). If "full" is not specified, "local" is implicit. A "rel-www" is like
-;; a local link with the prefix removed (and no initial "/").
-
-;; Examples:
-;; - "https://mysite.com/prefix/feeds/neato.atom.xml"   -- full link
-;; - "/prefix/feeds/neato.atom.xml"                     -- local link
-;; - "feeds/neato.atom.xml"                             -- rel-www
-
 
 ;; ============================================================
 ;; Site configuration
