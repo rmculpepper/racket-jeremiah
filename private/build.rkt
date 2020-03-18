@@ -15,9 +15,7 @@
 (provide (all-defined-out))
 
 ;; TODO IDEAS
-;; - allow path convention: "YYYY/MM-DD-auxtitle.ext" -> YYYY-MM-DD
 ;; - allow rendering to either <destpath>/index.html or <destpath>.html
-;; - allow path convention: "post-..." with date set in header?
 
 ;; ============================================================
 ;; Post Source
@@ -26,14 +24,8 @@
   (post-file-name? (path->string (file-name-from-path p))))
 
 (define (post-file-name? str)
-  (or (dated-post-file-name? str)
-      (draft-post-file-name? str)))
-
-(define (dated-post-file-name? str)
-  (regexp-match? #px"^\\d{4}-\\d{2}-\\d{2}-(?:.+?)[.](?:md|mdt|scrbl|html)$" str))
-
-(define (draft-post-file-name? str)
-  (regexp-match? #px"^draft-(?:.+?)[.](?:md|mdt|scrbl|html)$" str))
+  (or (regexp-match? #px"^\\d{4}-\\d{2}-(?:.+?)[.](?:md|mdt|scrbl|html)$" str)
+      (regexp-match? #px"^(?:draft|post)-(?:.+?)[.](?:md|mdt|scrbl|html)$" str)))
 
 ;; path->postsrc : Path -> postsrc
 (define (path->postsrc p)
