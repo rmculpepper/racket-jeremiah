@@ -9,14 +9,9 @@
          "write.rkt")
 (provide go)
 
-;; ----------------------------------------
-
-;; FIXME: option to ignore cache timestamps? (or maybe just for scribble?)
-;; FIXME: option to avoid updating cache?
-;; FIXME: option to only update cache, avoid writing to dest-dir?
-
 ;; go : -> Void
-(define (go #:include-draft? [include-draft? #f])
+(define (go #:include-draft? [include-draft? #f]
+            #:force-rebuild? [force-rebuild? #f])
   (log-jeremiah-info "The post source dir is ~e" (get-post-src-dir))
   (log-jeremiah-info "The post cache dir is ~e" (get-post-cache-dir))
   (log-jeremiah-info "The output dir is ~e" (get-dest-dir))
@@ -33,11 +28,18 @@
   (check-duplicate-post-src srcs)
 
   ;; First, build to cache
-  (log-jeremiah-info "Building posts")
-  (with-delay-exceptions
-    (for ([src (in-list srcs)])
-      (delay-exception (build/cache-post src))))
-  (log-jeremiah-info "Finished building posts")
+  (log-jeremiah-info "Checking cache")
+  (let ([builders
+         (filter values
+                 (with-delay-exceptions
+                   (for/list ([src (in-list srcs)])
+                     (delay-exception
+                      (check-cache/get-builder src #:force-rebuild? force-rebuild?)))))])
+    (log-jeremiah-info "Building ~s posts" (length builders))
+    (with-delay-exceptions
+      (for ([builder (in-list builders)])
+        (delay-exception (builder))))
+    (log-jeremiah-info "Finished building posts"))
 
   ;; Read metadata from cache, build index
   (define site
@@ -131,8 +133,8 @@
   (define (call/delay-exception inner-proc)
     (with-handlers ([exn:fail? (lambda (e) (set! exns (cons e exns)))])
       (inner-proc)))
-  (proc call/delay-exception)
-  (when (pair? exns)
-    (for ([e (in-list (reverse exns))])
-      ((error-display-handler) (exn-message e) e))
-    (error 'jeremiah "~s errors, exiting" (length exns))))
+  (begin0 (proc call/delay-exception)
+    (when (pair? exns)
+      (for ([e (in-list (reverse exns))])
+        ((error-display-handler) (exn-message e) e))
+      (error 'jeremiah "~s errors, exiting" (length exns)))))

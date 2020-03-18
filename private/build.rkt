@@ -42,18 +42,20 @@
 ;; - _<other> - other non-public files starting with _
 ;; - aux files linked from body
 
-;; build/cache-post : postsrc -> Void
-(define (build/cache-post src)
+;; check-cache/get-builder : postsrc -> (U #f (-> Void))
+(define (check-cache/get-builder src #:force-rebuild? [force-rebuild? #f])
   (match-define (postsrc path name cachedir) src)
   (define src-timestamp (file-or-directory-modify-seconds path))
   (define cache-timestamp (read-cache-timestamp cachedir))
   ;; FIXME: what about scribble file that depends on modified lib?
-  (cond [(> cache-timestamp src-timestamp)
-         (log-jeremiah-debug "skipping cached post: ~e" path)]
+  (cond [(and (> cache-timestamp src-timestamp) (not force-rebuild?))
+         (log-jeremiah-debug "skipping cached post: ~e" path)
+         #f]
         [else
-         (log-jeremiah-info "building post: ~e" path)
-         (make-directory* cachedir)
-         (build-post path cachedir)]))
+         (lambda ()
+           (log-jeremiah-info "building post: ~e" path)
+           (make-directory* cachedir)
+           (build-post path cachedir))]))
 
 ;; read-post-info : PostSrc -> (values Meta XExprs Boolean)
 ;; Reads info about a built post from its cache.

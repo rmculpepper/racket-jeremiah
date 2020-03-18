@@ -22,6 +22,7 @@
 
 (define (cmd:make args)
   (define the-site-file #f)
+  (define force-rebuild? #f)
   (define include-draft? #f)
   (command-line
    #:program (short-program+command-name)
@@ -30,12 +31,16 @@
    [("-s" "--site-file") site-file
     "Use the given site configuration file"
     (set! the-site-file site-file)]
+   [("--force-rebuild")
+    "Force rebuild of posts from source"
+    (set! force-rebuild? #t)]
    [("--include-draft")
     "Include draft posts in indexes"
     (set! include-draft? #t)]
    #:args ()
    (load-config-file the-site-file)
-   (go #:include-draft? include-draft?)))
+   (go #:include-draft? include-draft?
+       #:force-rebuild? force-rebuild?)))
 
 (define SITE-FILE "site.rkt")
 
