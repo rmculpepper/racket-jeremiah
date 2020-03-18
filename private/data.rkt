@@ -156,7 +156,7 @@
 
 (define (file/page file-name-base page-num)
   (cond [(zero? page-num) (format "~a.html" file-name-base)]
-        [else (format "~a-~a.html" file-name-base page-num)]))
+        [else (format "~a-~a.html" file-name-base (add1 page-num))]))
 
 
 ;; ============================================================
