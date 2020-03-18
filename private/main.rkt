@@ -16,7 +16,7 @@
 ;; FIXME: option to only update cache, avoid writing to dest-dir?
 
 ;; go : -> Void
-(define (go)
+(define (go #:include-draft? [include-draft? #f])
   (log-jeremiah-info "The post source dir is ~e" (get-post-src-dir))
   (log-jeremiah-info "The post cache dir is ~e" (get-post-cache-dir))
   (log-jeremiah-info "The output dir is ~e" (get-dest-dir))
@@ -40,10 +40,12 @@
   (log-jeremiah-info "Finished building posts")
 
   ;; Read metadata from cache, build index
-  (define posts (map read-post srcs))
-  (log-jeremiah-info "Read ~s built posts" (length posts))
-  (define site (new render-site% (posts posts)))
+  (define site
+    (let ([posts (map read-post srcs)])
+      (log-jeremiah-info "Read ~s built posts" (length posts))
+      (new render-site% (posts posts) (include-draft? include-draft?))))
   (define index (send site get-index))
+  (log-jeremiah-info "Main index has ~s posts" (length (send index get-posts)))
 
   (parameterize ((the-site site))
 
@@ -59,7 +61,7 @@
 
     ;; Write posts
     (log-jeremiah-info "Writing posts")
-    (for ([post (in-list posts)] #:when (send post render?))
+    (for ([post (in-list (send index get-posts))])
       (write-post post))
     (log-jeremiah-info "Finished writing posts")
 

@@ -19,16 +19,20 @@
 (define site%
   (class object%
     (init-field posts
+                [include-draft? #f]
                 [the-index% index%])
     (super-new)
 
     (define tag=>index ;; includes #f => main index
       (let ([tag=>posts (make-hash)])
-        (for ([post (in-list posts)] #:when (send post index?))
-          (for ([tag (in-list (cons #f (send post get-tags)))]
-                #:when (not (member tag reserved-tags)))
-            (hash-update! tag=>posts tag (lambda (ps) (cons post ps)) null)))
-        (for/hash ([(tag posts) (in-hash tag=>posts)])
+        (for* ([post (in-list posts)] #:when (include-post? post)
+               [tag (in-list (cons #f (send post get-tags)))])
+          (hash-update! tag=>posts tag (lambda (ps) (cons post ps)) null))
+        (for ([(tag posts) (in-hash tag=>posts)] #:when (member tag reserved-tags))
+          (log-jeremiah-error "reserved tag ~e in posts: ~e" tag
+                              (for/list ([p (in-list posts)]) (send p get-source))))
+        (for/hash ([(tag posts) (in-hash tag=>posts)]
+                   #:when (not (member tag reserved-tags)))
           (values tag (build-index tag posts)))))
 
     (define tags (sort (filter string? (hash-keys tag=>index)) string-ci<?))
@@ -38,8 +42,11 @@
         (hash-update! h (string-foldcase t) (lambda (ts) (cons t ts)) null))
       (for ([(k ts) (in-hash h)] #:when (> (length ts) 1))
         (log-jeremiah-error "tag collision: ~s" ts)))
+    (for ([post (in-list (get-posts))]
+          #:when (member (send post get-display) '("draft")))
+      (log-jeremiah-warning "including draft post: ~e" (send post get-source)))
 
-    (define/public (get-posts) posts)
+    (define/public (get-posts) (send (get-index) get-posts))
     (define/public (get-tags) tags)
     (define/public (get-index) (hash-ref tag=>index #f)) ;; #f = main index
     (define/public (get-tag-index tag) (hash-ref tag=>index tag #f))
@@ -53,6 +60,10 @@
       (define sorted-posts
         (sort posts string>? #:key (lambda (post) (send post sortkey))))
       (new the-index% (tag tag) (posts sorted-posts)))
+
+    (define/private (include-post? post)
+      (member (send post get-display)
+              (if include-draft? '("index" "draft") '("index"))))
 
     ;; ----------------------------------------
     ;; Utils for site.rkt and templates
@@ -179,6 +190,7 @@
     (define/public (get-blurb-xexprs) blurb)
     (define/public (get-more?) more?)
 
+    (define/public (get-source) (postsrc-path src))
     (define/public (get-source-type)
       (match (path->string (postsrc-path src))
         [(regexp "[.]scrbl$") 'scribble]
@@ -195,31 +207,23 @@
     (define/public (get-date) ;; short date: YYYY-MM-DD
       (match (metadata-date meta)
         [(pregexp #px"^(\\d{4}-\\d{2}-\\d{2})" (list _ d)) d]
-        [#f (error 'get-date "date not available\n  post: ~a" (about))]))
+        [#f (error 'get-date "date not available\n  post: ~a" (get-source))]))
     (define/public (get-year) ;; String(4) or #f
       (match (metadata-date meta)
         [(pregexp #px"^(\\d{4})" (list _ year)) year]
         [else #f]))
     (define/public (get-date-object)
       (cond [(metadata-date meta) => string->date/8601]
-            [else (error 'get-date-obj "date not available\n  post: ~a" (about))]))
+            [else (error 'get-date-obj "date not available\n  post: ~a" (get-source))]))
     (define/public (get-date-8601)
       (parameterize ((date-display-format 'iso-8601))
         (format "~aZ" (date->string (get-date-object) #t))))
 
-    (define/public (index? [tag #f])
-      (and (member (metadata-display meta) '("index"))
-           (cond [tag (and (not (member tag reserved-tags))
-                           (and (member tag (get-tags)) #t))]
-                 [else #t])))
-    (define/public (render?)
-      (member (metadata-display meta) '("index" "draft")))
+    (define/public (get-display) (metadata-display meta))
 
     (define/public (sortkey) ;; -> String
       (or (metadata-date meta)
-          (error 'post%::sortkey "no date: ~e" (about))))
-
-    (define/public (about) (format "(post ~e)" src))
+          (error 'post%::sortkey "no date: ~e" (get-source))))
 
     (define/public (get-body-xexprs)
       (with-input-from-file (build-path (postsrc-cachedir src) "_index.rktd")

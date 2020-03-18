@@ -22,16 +22,20 @@
 
 (define (cmd:make args)
   (define the-site-file #f)
+  (define include-draft? #f)
   (command-line
    #:program (short-program+command-name)
    #:argv args
-   #:once-any
+   #:once-each
    [("-s" "--site-file") site-file
     "Use the given site configuration file"
     (set! the-site-file site-file)]
+   [("--include-draft")
+    "Include draft posts in indexes"
+    (set! include-draft? #t)]
    #:args ()
    (load-config-file the-site-file)
-   (go)))
+   (go #:include-draft? include-draft?)))
 
 (define SITE-FILE "site.rkt")
 
