@@ -1,6 +1,17 @@
+
+/* Monospace fix
+ * Browsers typically set the font smaller when they see "font-family: monospace".
+ * References:
+ * - http://code.iamkate.com/html-and-css/fixing-browsers-broken-monospace-font-handling/
+ * - http://meyerweb.com/eric/thoughts/2010/02/12/fixed-monospace-sizing/
+ * - https://webkit.org/blog/67/strange-medium/
+ *
+ * One partial fix is to use "font-family: monospace,monospace" instead.
+ */
+
 /* Monospace: */
 .maincolumn, .refpara, .refelem, .tocset, .stt, .hspace, .refparaleft, .refelemleft {
-  font-family: monospace;
+  font-family: monospace,monospace;
 }
 
 /* Serif: */
@@ -272,7 +283,7 @@ ol ol ol ol { list-style-type: upper-alpha; }
   background-color: #f5f5f5;          /* like Bootstrap */
   border: 1px solid rgba(0,0,0,0.15); /* like Boostrap */
   padding: 9.5px;                     /* like Boostrap */
-  font-family: monospace;
+  font-family: monospace,monospace;
 }
 
 .SVInsetFlow {
@@ -398,9 +409,8 @@ ol ol ol ol { list-style-type: upper-alpha; }
 .RktMod, .RktKw, .RktVar, .RktSym,
 .RktRes, .RktOut, .RktCmt, .RktVal,
 .RktBlk, .RktErr {
-  font-family: monospace;
+  font-family: monospace,monospace;
   white-space: inherit;
-  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -471,7 +481,6 @@ ol ol ol ol { list-style-type: upper-alpha; }
 .RktValLink, .RktStxLink, .RktModLink {
   text-decoration: none;
     color: #07A;
-    font-size: 1rem;
 }
 
 /* for syntax links within headings */
@@ -482,7 +491,6 @@ h2 .RktMod, h3 .RktMod, h4 .RktMod, h5 .RktMod,
 h2 .RktVal, h3 .RktVal, h4 .RktVal, h5 .RktVal,
 h2 .RktPn, h3 .RktPn, h4 .RktPn, h5 .RktPn {
     color: #333;
-    font-size: 1.50rem;
     font-weight: 400;
 }
 
@@ -495,7 +503,7 @@ h2 .RktPn, h3 .RktPn, h4 .RktPn, h5 .RktPn {
 .tocset .RktValLink, .tocset .RktStxLink, .tocset .RktModLink, .tocset .RktSym {
     color: black;
     font-weight: 400;
-    font-size: 0.9rem;
+    font-size: 0.9em;
 }
 
 .tocset td a.tocviewselflink .RktValLink,
@@ -531,7 +539,6 @@ h2 .RktPn, h3 .RktPn, h4 .RktPn, h5 .RktPn {
 }
 
 .highlighted {
-    font-size: 1rem;
     background-color: #fee;
 }
 
@@ -602,15 +609,15 @@ h2 .RktPn, h3 .RktPn, h4 .RktPn, h5 .RktPn {
    text-align: right;
    z-index: 0;
    font-weight: 300;
-   font-family: monospace;
-   font-size: 0.9rem;
+   font-family: monospace,monospace;
+   font-size: 0.9em;
    color: gray;
 }
 
 .RpackageSpec .Smaller {
    font-weight: 300;
-   font-family: monospace;
-   font-size: 0.9rem;
+   font-family: monospace,monospace;
+   font-size: 0.9em;
 }
 
 .RForeground {
@@ -625,7 +632,7 @@ h2 .RktPn, h3 .RktPn, h4 .RktPn, h5 .RktPn {
 
 .RPartExplain {
     background: #eee;
-    font-size: 0.9rem;
+    font-size: 0.9em;
     margin-top: 0.2rem;
     padding: 0.2rem;
     text-align: left;
