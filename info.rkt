@@ -7,7 +7,7 @@
 (define pkg-authors '(ryanc))
 
 (define deps
-  '("base"))
+  '("base" "web-server-lib" "markdown" "html-lib"))
 
 (define build-deps
   '())
