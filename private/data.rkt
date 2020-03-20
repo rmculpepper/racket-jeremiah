@@ -322,6 +322,11 @@
 (define (string->date/8601 s)
   (define (num s) (if s (string->number s) 0))
   (match s
+    [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})$" (list _ year month day))
+     ;; A date w/o time is interpreted as noon UTC, so that the UTC
+     ;; date and local date coincide (almost) everywhere.
+     (define dsec (find-seconds 0 0 12 (num day) (num month) (num year) #f))
+     (seconds->date dsec #f)]
     [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?:[:](\\d{2}))?(Z)?)?$"
               (list _ year month day hour minute second tz))
      (define dsec
