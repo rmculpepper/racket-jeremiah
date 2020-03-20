@@ -102,7 +102,7 @@
     (id ,(send post get-atom-id))
     (published ,(send post get-date-8601))
     (updated ,(send post get-date-8601))
-    ;; (author (name ,(send post get-author)))
+    ,@(map (lambda (author) `(author (name ,author))) (send post get-authors))
     (content ([type "html"])
              ,(send post get-blurb-html)
              ,(cond [(send post get-more?)
