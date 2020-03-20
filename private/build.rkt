@@ -219,7 +219,9 @@
                           "--redirect" "https://docs.racket-lang.org/local-redirect/"
                           "--redirect-main" "https://docs.racket-lang.org"
                           "++main-xref-in"
-                          (path->string path))])
+                          (path->string path))]
+                 [current-directory (path-only path)]
+                 [current-load-relative-directory (path-only path)])
     (dynamic-require 'scribble/run #f)))
 
 ;; usual-scribble-files : (Listof String)
