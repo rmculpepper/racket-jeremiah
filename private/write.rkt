@@ -99,7 +99,7 @@
   `(entry
     (title ([type "text"]) ,(send post get-title))
     (link ([rel "alternate"] [href ,(send post get-full-link)]))
-    (id ,(build-tag-uri (send post get-rel-www)))
+    (id ,(send post get-atom-id))
     (published ,(send post get-date-8601))
     (updated ,(send post get-date-8601))
     ;; (author (name ,(send post get-author)))

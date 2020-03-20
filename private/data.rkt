@@ -204,6 +204,10 @@
       (if (pair? authors) authors (list (get-site-author))))
     (define/public (get-tags) (metadata-tags meta))
 
+    (define/public (get-title-slug) (metadata-slug meta))
+    (define/public (get-atom-id)
+      (or (metadata-atom-id meta) (build-tag-uri (get-rel-www))))
+
     (define/public (get-date) ;; short date: YYYY-MM-DD
       (match (metadata-date meta)
         [(pregexp #px"^(\\d{4}-\\d{2}-\\d{2})" (list _ d)) d]
@@ -237,7 +241,7 @@
     (define/public (get-rel-www) ;; -> String
       ;; URL path as string, not including base-url
       ;; should not start or end with "/" -- FIXME: enforce on pattern?
-      (define title-slug (slug (metadata-title meta)))
+      (define title-slug (get-title-slug))
       (define-values (pattern year month day)
         (match (metadata-date meta)
           [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
@@ -268,12 +272,14 @@
 
 ;; Metadata is a hasheq with the following possible keys:
 ;; - 'title : String
+;; - 'slug : String
 ;; - 'title-xexpr : XExpr -- text or span element containing rendered title
 ;;       -- NOTE: currently disabled, because it looks weird (maybe just CSS issue?)
 ;; - 'date : String -- should have form "YYYY-MM-DD"
 ;; - 'authors : String (comma-separated)
 ;; - 'tags : String (comma-separated)
 ;; - 'display : "index" | "draft" | "norender"
+;; - 'atomid : String, must be URI (or IRI?) -- use for porting
 
 ;; Metadata is gathered from the following sources (earlier overrides later):
 ;; - header   -- * (except title-xexpr)
@@ -289,19 +295,24 @@
   (or ;;(hash-ref h 'title-xexpr #f) -- see note above
       (hash-ref h 'title #f)
       (error 'metadata-title "missing title: ~e" h)))
+(define (metadata-slug h)
+  (or (hash-ref h 'slug #f)
+      (slug (metadata-title h))))
 (define (metadata-date h)
   (match (hash-ref h 'date #f)
     [(pregexp "^\\d{4}-\\d{2}-\\d{2}" (list d)) d]
     [(? string? d) (error 'metadata-date "bad date: ~e" d)]
     [#f #f]))
 (define (metadata-authors h)
-  (string-split (hash-ref h 'authors "") #rx"[ *],[ ]*" #:trim? #t))
+  (string-split (hash-ref h 'authors "") #rx"[ ]*,[ ]*" #:trim? #t))
 (define (metadata-tags h)
   (string-split (hash-ref h 'tags "") #rx"[ ]*,[ ]*" #:trim? #t))
 (define (metadata-display h)
   (define v (hash-ref h 'display "index"))
   (cond [(member v '("index" "draft" "norender")) v]
         [else (error 'metadata-display "bad display: ~e" v)]))
+(define (metadata-atom-id h) ;; FIXME: validate?
+  (hash-ref h 'atomid #f))
 
 ;; merge-metadata : MetaHash ...+ -> MetaHash
 ;; Merges metadata; each key get value from *leftmost* hash that has a value for it.
