@@ -1,136 +1,71 @@
 #lang racket/base
-(require racket/string
+(require racket/contract/base
+         racket/string
          racket/list
          racket/match
-         net/url)
-(provide (all-defined-out))
-
-;; See the notes in this directory's README.md for some terminology
-;; definitions and implementation naming conventions.
-
-(define-logger jeremiah)
+         net/url
+         "util.rkt")
+(provide call/allow-configuration
+         ;; ... names defined by defconfig ...
+         the-site)
 
 ;; ============================================================
-;; Site configuration
+;; User configuration support
 
-(define site-title (make-parameter #f))
-(define site-author (make-parameter #f))
-(define site-max-feed-items (make-parameter 100))
-(define site-posts-per-page (make-parameter 10))
+(define (call/allow-configuration proc)
+  (parameterize ((the-config-h default-config))
+    (proc)))
 
-(define (get-site-author #:who [who 'get-site-author])
-  (or (site-author) (error who "site author not set")))
-(define (get-site-title #:who [who 'get-site-title])
-  (or (site-title) (error who "site title not set")))
+(define the-config-h (make-parameter #f))
+(define default-config '#hash()) ;; mutated
+(define no-value (void)) ;; represents unconfigured key
+
+(define (get/set/c ctc) (case-> (-> ctc) (-> ctc any)))
+
+(define-syntax-rule (defconfig name ctc default)
+  (begin
+    (set! default-config (hash-set default-config 'name default))
+    (define name (config-get/set 'name))
+    (provide (contract-out [name (get/set/c ctc)]))))
 
 
-;; ============================================================
-;; Build configuration
+(define (config-get/set key)
+  (define (check-configuring)
+    (unless (hash? (the-config-h))
+      (error key "not currently allowing configuration")))
+  (case-lambda
+    [()
+     (check-configuring)
+     (define v (hash-ref (the-config-h) key))
+     (if (eq? v no-value) (error key "not configured") v)]
+    [(value)
+     (check-configuring)
+     (the-config-h (hash-set (the-config-h) key value))]))
 
-;; Directories
+;; ----------------------------------------
+;; Site options
 
-(define base-dir (make-parameter #f))
-(define pre-static-src-dirs (make-parameter null))
+(defconfig site-title string? no-value)
+(defconfig site-author string? no-value)
+(defconfig site-max-feed-items exact-positive-integer? 100)
+(defconfig site-posts-per-page exact-positive-integer? 10)
 
-(define (get-base-dir #:who [who 'get-base-dir])
-  (or (base-dir) (error who "base directory not set")))
+;; ----------------------------------------
+;; Paths
 
-(define-syntax-rule (define-get-path (getter x ...) relpath ...)
-  (define (getter x ... #:who [who 'getter])
-    (build-path (get-base-dir #:who who) relpath ...)))
+(defconfig base-dir complete-path? no-value)
+(defconfig pre-static-src-dirs (listof complete-path?) null)
 
-(define-get-path (get-static-src-dir) "static")
-(define-get-path (get-post-src-dir)   "posts")
-(define-get-path (get-cache-dir)      "cache")
-(define-get-path (get-post-cache-dir) "cache" "posts")
-(define-get-path (get-dest-dir)       "build")
-(define-get-path (get-feeds-dest-dir) "build" "feeds")
-(define-get-path (get-tags-dest-dir)  "build" "tags")
-
+;; ----------------------------------------
 ;; URL
 
-;; base-url : (Parameterof URL) -- not string!
-(define base-url (make-parameter #f))
+(defconfig base-url url? no-value)
 
-(define (get-base-url #:who [who 'get-full-base-url])
-  (or (base-url) (error who "base URL not set")))
-
-(define-syntax-rule (define-get-url (getter x ...) relpath ...)
-  (define (getter x ... #:who [who 'getter])
-    (build-url (get-base-url #:who who) relpath ...)))
-
-(define-get-url (get-tags-url)  "tags")
-(define-get-url (get-feeds-url) "feeds")
-(define-get-url (get-tag-url tag) "tags" (format "~a.html" (slug tag)))
-(define-get-url (get-atom-feed-url tag) "feeds" (format "~a.atom.xml" (slug tag)))
-
-(define (get-base-link-no-slash #:who [who 'get-base-link-no-slash])
-  (no-end-/ (url->string (local-url (get-base-url #:who who)))))
-
-(define (get-tag-full-link tag) (url->string (get-tag-url tag)))
-(define (get-tag-link tag) (url->string (local-url (get-tag-url tag))))
-(define (get-atom-feed-full-link tag) (url->string (get-atom-feed-url tag)))
-(define (get-atom-feed-link tag) (url->string (local-url (get-atom-feed-url tag))))
-
-;; URL utils
-
-;; local-url : URL -> URL
-(define (local-url u #:who [who 'local-url])
-  (match u
-    [(url scheme user host port #t path '() #f)
-     (url #f     #f   #f   #f   #t path '() #f)]
-    [_ (error who "cannot convert to local URL: ~e" u)]))
-
-;; build-url : URL String ... -> URL
-(define (build-url base . paths)
-  (define (trim-final-/ pps)
-    (cond [(and (pair? pps) (match (last pps) [(path/param "" '()) #t] [_ #f]))
-           (drop-right pps 1)]
-          [else pps]))
-  (match base
-    [(url scheme user host post #t pps '() #f)
-     (define new-pps
-       (for*/list ([path (in-list paths)] [part (in-list (regexp-split #rx"/" path))])
-         (path/param part null)))
-     (define pps* (append (trim-final-/ pps) new-pps))
-     (url scheme user host post #t pps* '() #f)]))
-
-;; build-link : URL/String String ... -> String
-(define (build-link base #:local? [local? #t] . paths)
-  (let* ([base (if (url? base) base (string->url base))]
-         [base (if local? (local-url base) base)])
-    (url->string (apply build-url base paths))))
-
-;; no-end-/ : String -> String
-(define (no-end-/ str) (regexp-replace #rx"/$" str ""))
-
-;; slug : String -> String
-;; Convert a string into a "slug", in which:
-;; - The string is Unicode normalized to NFC form.
-;; - Consecutive characters that are neither char-alphabetic? nor char-numeric?
-;;   are replaced by hyphens.
-;; - The string is Unicode normalized to NFD form.
-(define (slug s)
-  (let* ([s (string-normalize-nfc s)]
-         [s (let ([cleaned-s (string-copy s)])
-              (for ([c (in-string cleaned-s)] [i (in-naturals)])
-                (unless (or (char-alphabetic? c) (char-numeric? c))
-                  (string-set! cleaned-s i #\-)))
-              cleaned-s)]
-         [s (regexp-replace* #px"-{2,}" s "-")]
-         [s (regexp-replace #px"-{1,}$" s "")]
-         [s (regexp-replace #px"^-{1,}" s "")]) ;; breaks compat w/ Frog
-    (string-normalize-nfd s)))
-
-
-;; ============================================================
-;; Tag URI configuration
+;; ----------------------------------------
+;; Tag URI (for Atom IDs)
 
 ;; References for "tag" URI scheme:
 ;; - https://tools.ietf.org/html/rfc4151
-
-(define tag-uri-entity (make-parameter #f)) ;; eg, "me@mysite.com,2020"
-(define tag-uri-prefix (make-parameter #f)) ;; eg, "blog"
 
 ;; Feed examples:
 ;; - tag:me@mysite.com,2020:blog:feed/all.atom.xml
@@ -138,31 +73,28 @@
 ;; Post examples:
 ;; - tag:me@mysite.com,2020:blog:2020/01/01/title-slug
 
-;; build-tag-uri : String -> String
-(define (build-tag-uri suffix #:who [who 'build-tag-uri])
-  (define entity (or (tag-uri-entity) (error who "tag URI entity not set")))
-  (define prefix (or (tag-uri-prefix) (error who "tag URI prefix not set")))
-  (format "tag:~a:~a~a~a" entity prefix (if (equal? suffix "") "" ":") suffix))
+(defconfig tag-uri-entity string? no-value)     ;; eg, "me@mysite.com,2020"
+(defconfig tag-uri-prefix (or/c #f string?) "") ;; eg, "blog"
 
-;; ============================================================
-;; Page configuration
+;; ----------------------------------------
+;; Post paths
 
-(define permalink-pattern (make-parameter "{year}/{month}/{title}"))
-(define draft-permalink-pattern (make-parameter "draft/{title}"))
+(defconfig permalink-pattern string? "{year}/{month}/{title}")
+(defconfig draft-pattern string? "draft/{title}")
 
-(define (get-permalink-pattern)
-  (cond [(permalink-pattern) => values]
-        [else (error 'get-permalink-pattern "not set")]))
+;; ----------------------------------------
+;; Rendering hooks
 
-(define (get-draft-permalink-pattern)
-  (cond [(draft-permalink-pattern) => values]
-        [else (error 'get-draft-permalink-pattern "not set")]))
+(define page/c any/c) ;; post% or index-page% object
+(define post/c any/c) ;; post% object
+(define html/c any/c) ;; whatever is allowed by template processing
 
-(define page-renderer (make-parameter #f))
-(define post-renderer (make-parameter #f))
-(define index-entry-renderer (make-parameter #f))
+(defconfig page-renderer (-> page/c html/c) void)
+(defconfig post-renderer (-> post/c html/c) void)
+(defconfig index-entry-renderer (-> post/c html/c) void)
 
-(define extra-html (make-parameter #f))
+(defconfig extra-html (-> symbol? page/c html/c) void)
+
 
 ;; ============================================================
 ;; Write phase state

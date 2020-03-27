@@ -34,9 +34,9 @@
     <div class="layout pure-g">
       <div class="titlebar pure-u-1">
         <div class="header">
-          <h1 class="site-title"><a href="@(send site link)/">@(site-title)</a></h1>
+          <h1 class="site-title"><a href="@(send site link)/">@(send site get-title)</a></h1>
           @(send site get-extra-html 'after-title page)
-          <h2 class="site-tagline">the blog of @$h[(site-author)]</h2>
+          <h2 class="site-tagline">the blog of @$h[(send site get-author)]</h2>
           @(send site get-extra-html 'after-tagline page)
           <nav class="nav">
             <ul class="nav-list">
@@ -44,7 +44,7 @@
                  (define (tag-link tag)
                    @list{
                      <li class="nav-item">
-                       <a class="pure-button" href="@(get-tag-link tag)">@$h[tag]</a>
+                       <a class="pure-button" href="@(send site get-index-main-link tag)">@$h[tag]</a>
                      </li>
                      })
                  (map tag-link (send site get-tags)))

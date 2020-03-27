@@ -19,6 +19,7 @@
 
 (define render-site%
   (class site%
+    (inherit-field config)
     (super-new)
 
     ;; Rendering utilities for use by templates, etc
@@ -34,7 +35,7 @@
     (define/public (tag->link-html tag)
       (xexpr->html (tag->link-xexpr tag)))
     (define/public (tag->link-xexpr tag)
-      `(a ([href ,(get-tag-link tag)]) ,tag))
+      `(a ([href ,(send config get-index-main-link tag)]) ,tag))
 
     (define/public (date->html d)
       (xexpr->html (date->xexpr d)))
@@ -42,7 +43,7 @@
       (if d `(time ([datetime ,d]) ,d) `(span)))
 
     (define/public (get-extra-html location page)
-      ((or (extra-html) void) location page))
+      ((send config get-extra-html) location page))
     ))
 
 ;; ============================================================
@@ -73,7 +74,7 @@
 
 (define render-index-page%
   (class* index-page% (page<%>)
-    (inherit-field index page-num num-pages)
+    (inherit-field config index page-num num-pages)
     (inherit get-link get-posts)
     (super-new)
 
@@ -81,7 +82,7 @@
     (define/public (is-page-type? type) (eq? (get-page-type) type))
 
     (define/public (render-page-html)
-      ((page-renderer) this))
+      ((send config get-page-renderer) this))
 
     (define/public (render-content-html)
       (define rendered-posts
@@ -102,7 +103,7 @@
 
 (define render-post%
   (class* post% (page<%>)
-    (inherit-field)
+    (inherit-field config)
     (inherit get-date
              get-authors
              get-tags
@@ -117,13 +118,13 @@
     (define/public (is-page-type? type) (eq? (get-page-type) type))
 
     (define/public (render-page-html)
-      ((page-renderer) this))
+      ((send config get-page-renderer) this))
 
     (define/public (render-content-html)
-      ((post-renderer) this))
+      ((send config get-post-renderer) this))
 
     (define/public (render-index-entry-html)
-      ((index-entry-renderer) this))
+      ((send config get-index-entry-renderer) this))
 
     (define/public (get-title-html) (xexpr->html (get-title-xexpr)))
     (define/public (get-blurb-html) (xexprs->html (get-blurb-xexprs)))

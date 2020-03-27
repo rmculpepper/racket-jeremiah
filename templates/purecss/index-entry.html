@@ -2,7 +2,7 @@
   <header class="post-header">
     <h2 class="post-title"><a href='@(send post get-link)'>@(send post get-title-html)</a></h2>
     <div class="post-meta">
-      @(unless (equal? (send post get-authors) (list (site-author)))
+      @(unless (equal? (send post get-authors) (list (send site get-author)))
          @list{<div class="post-authors">By: @$hs[(add-between (send post get-authors) ", ")]</div>})
       <span class="post-date">@(send site date->html (send post get-date))</span>
       <span class="post-tags">@(send site tags->links-html (send post get-tags))</span>

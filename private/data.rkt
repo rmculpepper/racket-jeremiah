@@ -1,76 +1,237 @@
 #lang racket/base
-(require racket/match
+(require (for-syntax racket/base racket/syntax)
+         racket/match
          racket/class
          racket/list
+         racket/promise
          racket/path
          racket/date
          racket/hash
          racket/string
          net/url
          markdown
-         "config.rkt"
-         (prefix-in config: "config.rkt")
-         "xexpr.rkt")
+         "util.rkt"
+         "xexpr.rkt"
+         (prefix-in config: "config.rkt"))
 (provide (all-defined-out))
+
+;; An IndexName (IName) is one of
+;; - String -- a tag name
+;; - 'main  -- the main index
+;; - 'draft -- the special draft index
+
+;; ============================================================
+;; Config
+
+(define-syntax (define-init-field+getter stx)
+  (syntax-case stx ()
+    [(_ (name ...))
+     (with-syntax ([(tmp ...) (generate-temporaries #'(name ...))]
+                   [((get-name config:name) ...)
+                    (for/list ([name (in-list (syntax->list #'(name ...)))])
+                      (list (format-id name "get-~a" name)
+                            (format-id name "config:~a" name)))])
+       #'(begin (define tmp (config:name)) ...
+                (define/public (get-name) tmp) ...))]))
+
+(define config%
+  (class object%
+
+    (define-init-field+getter
+      (site-title
+       site-author
+       site-max-feed-items
+       site-posts-per-page
+       base-dir
+       pre-static-src-dirs
+       base-url
+       tag-uri-entity
+       tag-uri-prefix
+       permalink-pattern
+       draft-pattern
+       page-renderer
+       post-renderer
+       index-entry-renderer
+       extra-html))
+
+    (super-new)
+
+    ;; ----------------------------------------
+    ;; Paths
+
+    (define/private (-base-rel-path . relpaths)
+      (apply build-path (get-base-dir) relpaths))
+
+    (define/public (get-static-src-dir) (-base-rel-path "static"))
+    (define/public (get-post-src-dir)   (-base-rel-path "posts"))
+    (define/public (get-cache-dir)      (-base-rel-path "cache"))
+    (define/public (get-post-cache-dir) (-base-rel-path "cache" "posts"))
+    (define/public (get-dest-dir)       (-base-rel-path "build"))
+    (define/public (get-feeds-dest-dir) (-base-rel-path "build" "feeds"))
+    (define/public (get-tags-dest-dir)  (-base-rel-path "build" "tags"))
+
+    ;; ----------------------------------------
+    ;; URLs and Links
+
+    (define/private (-base-rel-url . relpaths)
+      (apply build-url (get-base-url) relpaths))
+
+    (define/public (get-tags-url)  (-base-rel-url "tags"))
+    (define/public (get-feeds-url) (-base-rel-url "feeds"))
+
+    (define/public (get-link) (url->string (local-url (get-base-url))))
+    (define/public (get-full-link) (url->string (get-base-url)))
+
+    ;; ----------------------------------------
+    ;; URLs and Paths for Indexes
+
+    (define/public (get-index-main-url iname)
+      (match iname
+        [(? string? tag)
+         (-base-rel-url "tags" (format "~a.html" (get-index-dest-file-name-base tag)))]
+        ['main (get-base-url)] ;; implicit /index.html
+        ['draft (-base-rel-url "tags" "draft.html")]))
+
+    (define/public (get-index-page-url iname n)
+      (define file-name (get-index-page-file-name iname n))
+      (match iname
+        [(? string? tag) (build-url (get-tags-url) file-name)]
+        [(or 'main 'draft) (build-url (get-base-url) file-name)]))
+
+    (define/public (get-index-page-dest-file iname n)
+      (define file-name (get-index-page-file-name iname n))
+      (build-path (get-index-dest-dir iname) file-name))
+
+    (define/public (get-index-page-file-name iname n)
+      (file/page (get-index-dest-file-name-base iname) n))
+
+    (define/public (get-index-dest-file-name-base iname)
+      (match iname
+        [(? string? tag) (slug tag)]
+        ['main "index"]
+        ['draft "draft"]))
+
+    (define/public (get-index-dest-dir iname)
+      (match iname
+        [(? string? tag) (get-tags-dest-dir)]
+        [(or 'main 'draft) (get-dest-dir)]))
+
+    (define/public (get-index-atom-feed-url iname)
+      (-base-rel-url "feeds" (get-index-atom-feed-file-name iname)))
+
+    (define/public (get-index-atom-feed-file-name iname)
+      (format "~a.atom.xml"
+              (match iname
+                [(? string? tag) (slug tag)]
+                ['main "all"]
+                ['draft (error 'get-index-atom-feed-file-name "no atom feed for drafts")])))
+
+    (define/public (get-index-atom-id iname)
+      (define file-name (get-index-atom-feed-file-name iname))
+      (build-tag-uri (format "feeds/~a" file-name)))
+
+    (define/public (get-index-main-full-link iname)
+      (url->string (get-index-main-url iname)))
+    (define/public (get-index-main-link iname)
+      (url->string (local-url (get-index-main-url iname))))
+    (define/public (get-index-atom-feed-full-link iname)
+      (url->string (get-index-atom-feed-url iname)))
+    (define/public (get-index-atom-feed-link iname)
+      (url->string (local-url (get-index-atom-feed-url iname))))
+
+    ;; ----------------------------------------
+    ;; Tag URI
+
+    ;; build-tag-uri : String -> String
+    (define/public (build-tag-uri suffix)
+      (define entity (get-tag-uri-entity))
+      (define prefix (get-tag-uri-prefix))
+      (format "tag:~a:~a~a~a" entity prefix (if (equal? suffix "") "" ":") suffix))
+
+    ;; ----------------------------------------
+    ;; Post Sources
+
+    ;; path->postsrc : Path -> postsrc
+    (define/public (path->postsrc p)
+      (define name (path->string (file-name-from-path p)))
+      (postsrc p name (build-path (get-post-cache-dir) name)))
+    ))
+
+(define (file/page file-name-base page-num)
+  (cond [(zero? page-num) (format "~a.html" file-name-base)]
+        [else (format "~a-~a.html" file-name-base (add1 page-num))]))
+
+(define has-config%
+  (class object%
+    (init-field config)
+    (super-new)
+    (define/public (get-config) config)))
 
 ;; ============================================================
 ;; Site
 
 (define site%
-  (class object%
+  (class has-config%
+    (inherit-field config)
     (init-field posts
-                [include-draft? #f]
                 [the-index% index%])
     (super-new)
 
-    (define tag=>index ;; includes #f => main index
-      (let ([tag=>posts (make-hash)])
-        (for* ([post (in-list posts)] #:when (include-post? post)
-               [tag (in-list (cons #f (send post get-tags)))])
-          (hash-update! tag=>posts tag (lambda (ps) (cons post ps)) null))
-        (for ([(tag posts) (in-hash tag=>posts)] #:when (member tag reserved-tags))
+    (define iname=>index
+      (let ([iname=>posts (make-hash)])
+        (hash-set! iname=>posts 'main null)
+        (hash-set! iname=>posts 'draft null)
+        (for ([post (in-list posts)])
+          (case (send post get-display)
+            [("index")
+             (hash-cons! iname=>posts 'main post)
+             (for ([tag (in-list (send post get-tags))])
+               (hash-cons! iname=>posts tag post))]
+            [("draft") (hash-cons! iname=>posts 'draft post)]))
+        (for ([(tag posts) (in-hash iname=>posts)] #:when (member tag reserved-tags))
           (log-jeremiah-error "reserved tag ~e in posts: ~e" tag
                               (for/list ([p (in-list posts)]) (send p get-source))))
-        (for/hash ([(tag posts) (in-hash tag=>posts)]
-                   #:when (not (member tag reserved-tags)))
-          (values tag (build-index tag posts)))))
+        (for/hash ([(iname posts) (in-hash iname=>posts)]
+                   #:when (not (member iname reserved-tags)))
+          (values iname (build-index iname posts)))))
 
-    (define tags (sort (filter string? (hash-keys tag=>index)) string-ci<?))
+    (define tags (sort (filter string? (hash-keys iname=>index)) string-ci<?))
 
     (let ([h (make-hash)])
       (for ([t (in-list tags)])
-        (hash-update! h (string-foldcase t) (lambda (ts) (cons t ts)) null))
+        (hash-cons! h (string-foldcase t) t))
       (for ([(k ts) (in-hash h)] #:when (> (length ts) 1))
         (log-jeremiah-error "tag collision: ~s" ts)))
-    (for ([post (in-list (get-posts))]
-          #:when (member (send post get-display) '("draft")))
-      (log-jeremiah-warning "including draft post: ~e" (send post get-source)))
 
     (define/public (get-posts) (send (get-index) get-posts))
     (define/public (get-tags) tags)
-    (define/public (get-index) (hash-ref tag=>index #f)) ;; #f = main index
-    (define/public (get-tag-index tag) (hash-ref tag=>index tag #f))
+    (define/public (get-index) (hash-ref iname=>index 'main))
+    (define/public (get-tag-index tag) (hash-ref iname=>index tag #f))
 
     (define/public (get-prev-post post) (send (get-index) get-prev post))
     (define/public (get-next-post post) (send (get-index) get-next post))
 
-    ;; build-index : String/#f (Listof Post) -> Index
-    ;; PRE: (send post index?) is true for each post in posts
-    (define/private (build-index tag posts)
+    ;; build-index : IndexName (Listof Post) -> Index
+    (define/private (build-index iname posts)
       (define sorted-posts
         (sort posts string>? #:key (lambda (post) (send post sortkey))))
-      (new the-index% (tag tag) (posts sorted-posts)))
-
-    (define/private (include-post? post)
-      (member (send post get-display)
-              (if include-draft? '("index" "draft") '("index"))))
+      (new the-index% (config config) (iname iname) (posts sorted-posts)))
 
     ;; ----------------------------------------
     ;; Utils for site.rkt and templates
 
-    (define/public (link . paths) (apply build-link #:local? #t (get-base-url) paths))
-    (define/public (full-link . paths) (apply build-link #:local? #f (get-base-url) paths))
+    (define/public (get-title) (send config get-site-title))
+    (define/public (get-author) (send config get-site-author))
+    (define/public (get-index-main-link tag) (send config get-index-main-link tag))
+
+    (define/public (link . paths)
+      (apply build-link #:local? #t (send config get-base-url) paths))
+    (define/public (full-link . paths)
+      (apply build-link #:local? #f (send config get-base-url) paths))
     ))
+
+(define (hash-cons! h k v)
+  (hash-update! h k (lambda (vs) (cons v vs)) null))
 
 
 ;; ============================================================
@@ -78,8 +239,9 @@
 
 ;; Index = instance of index%
 (define index%
-  (class object%
-    (init-field tag     ;; String/#f
+  (class has-config%
+    (inherit-field config)
+    (init-field iname   ;; IndexName
                 posts)  ;; (Listof Post), sorted most recent first
     (super-new)
 
@@ -91,9 +253,11 @@
       (hash-set! prev-h next-post post))
 
     (define/public (get-title)
-      (cond [tag (format "Posts tagged '~a'" tag)]
-            [else (site-title)]))
-    (define/public (get-tag) tag)
+      (match iname
+        [(? string? tag) (format "Posts tagged '~a'" tag)]
+        ['main (send config get-site-title)]
+        ['draft "Draft posts"]))
+    (define/public (get-tag) (and (string? iname) iname)) ;; FIXME?
     (define/public (get-posts) posts)
     (define/public (get-prev p) (hash-ref prev-h p #f))
     (define/public (get-next p) (hash-ref next-h p #f))
@@ -101,35 +265,36 @@
     (define/public (get-updated-8601)
       (and (pair? posts) (send (car posts) get-date-8601)))
 
+    (define/public (get-atom-id)
+      (send config get-index-atom-id iname))
+
     ;; ----------------------------------------
     ;; Paths and URLs
 
     (define/public (get-feed-file-name)
-      (format "~a.atom.xml" (or tag "all")))
+      (send config get-index-atom-feed-file-name iname))
     (define/public (get-feed-dest-file)
-      (build-path (get-feeds-dest-dir) (get-feed-file-name)))
-    (define/public (get-feed-url)
-      (build-url (get-feeds-url) (get-feed-file-name)))
-    (define/public (get-feed-link)
-      (url->string (local-url (get-feed-url))))
+      (build-path (send config get-feeds-dest-dir) (get-feed-file-name)))
+    (define/public (get-feed-url) (send config get-index-atom-feed-url iname))
+    (define/public (get-feed-link) (url->string (local-url (get-feed-url))))
 
-    (define/public (get-tag-url) ;; no tag => base url (implicit /index.html)
-      (if tag (config:get-tag-url tag) (get-base-url)))
-
-    (define/public (get-tag-dest-file-name-base)
-      (if tag (slug tag) "index"))
-    (define/public (get-tag-dest-dir)
-      (if tag (get-tags-dest-dir) (get-dest-dir)))
+    (define/public (get-index-main-url) ;; no tag => base url (implicit /index.html)
+      (send config get-index-main-url iname))
+    (define/public (get-index-page-url [n 0])
+      (send config get-index-page-url iname n))
+    (define/public (get-index-page-dest-file n)
+      (send config get-index-page-dest-file iname n))
     ))
 
 ;; IndexPage = instance of index-page%
 (define index-page%
-  (class object%
+  (class has-config%
+    (inherit-field config)
     (init-field index           ;; Index
                 posts           ;; (Listof Post)
                 page-num        ;; Nat
                 num-pages)      ;; Nat
-    (super-new)
+    (super-new (config (send index get-config)))
 
     (define/public (get-tag) (send index get-tag))
 
@@ -144,15 +309,11 @@
     ;; ----------------------------------------
     ;; Paths and URLs
 
-    (define/public (get-dest-file-name [n page-num])
-      (file/page (send index get-tag-dest-file-name-base) n))
     (define/public (get-dest-file)
-      (build-path (send index get-tag-dest-dir) (get-dest-file-name)))
+      (send index get-index-page-dest-file page-num))
 
     (define/public (get-url [n page-num])
-      (let ([tag (send index get-tag)])
-        (cond [tag (build-url (get-tags-url) (get-dest-file-name n))]
-              [else (build-url (get-base-url) (get-dest-file-name n))])))
+      (send index get-index-page-url n))
     (define/public (get-link [n page-num])
       (build-link #:local? #t (get-url n)))
     (define/public (get-full-link [n page-num])
@@ -164,10 +325,6 @@
     (define/public (get-feed-link)
       (send index get-feed-link))
     ))
-
-(define (file/page file-name-base page-num)
-  (cond [(zero? page-num) (format "~a.html" file-name-base)]
-        [else (format "~a-~a.html" file-name-base (add1 page-num))]))
 
 
 ;; ============================================================
@@ -181,7 +338,8 @@
 
 ;; Post = instance of post%
 (define post%
-  (class object%
+  (class has-config%
+    (inherit-field config)
     (init-field src meta blurb more?)
     (super-new)
 
@@ -201,12 +359,12 @@
     (define/public (get-title-xexpr) (metadata-title-xexpr meta))
     (define/public (get-authors)
       (define authors (metadata-authors meta))
-      (if (pair? authors) authors (list (get-site-author))))
+      (if (pair? authors) authors (list (send config get-site-author))))
     (define/public (get-tags) (metadata-tags meta))
 
     (define/public (get-title-slug) (metadata-slug meta))
     (define/public (get-atom-id)
-      (or (metadata-atom-id meta) (build-tag-uri (get-rel-www))))
+      (or (metadata-atom-id meta) (send config build-tag-uri (get-rel-www))))
 
     (define/public (get-date) ;; short date: YYYY-MM-DD
       (match (metadata-date meta)
@@ -238,17 +396,20 @@
 
     (define/public (get-cachedir) (postsrc-cachedir src))
 
-    (define/public (get-rel-www) ;; -> String
+    (define/public (get-rel-www) (force rel-www-p))
+    (define rel-www-p (delay (-get-rel-www)))
+
+    (define/public (-get-rel-www) ;; -> String
       ;; URL path as string, not including base-url
       ;; should not start or end with "/" -- FIXME: enforce on pattern?
       (define title-slug (get-title-slug))
       (define-values (pattern year month day)
         (match (metadata-date meta)
           [(pregexp #px"^(\\d{4})-(\\d{2})-(\\d{2})" (list _ year month day))
-           (values (get-permalink-pattern) year month day)]
+           (values (send config get-permalink-pattern) year month day)]
           [#f
            (define (nope . _) (error 'post-meta->rel-www "date component not available"))
-           (values (get-draft-permalink-pattern) nope nope nope)]))
+           (values (send config get-draft-pattern) nope nope nope)]))
       (regexp-replaces pattern
                        `([#rx"{year}" ,year]
                          [#rx"{month}" ,month]
@@ -257,13 +418,13 @@
                          #;[#rx"{filename}",filename])))
 
     (define/public (get-page-url) (build-url (get-url) "index.html"))
-    (define/public (get-page-link) (build-link #:local? #t (get-page-url)))
+    (define/public (get-page-link) (url->string (local-url (get-page-url))))
 
-    (define/public (get-out-dir) (build-path (get-dest-dir) (get-rel-www)))
-    (define/public (get-url) (build-url (get-base-url) (get-rel-www)))
+    (define/public (get-dest-dir) (build-path (send config get-dest-dir) (get-rel-www)))
+    (define/public (get-url) (build-url (send config get-base-url) (get-rel-www)))
     (define/public (get-full-link) (url->string (get-url)))
     (define/public (get-link) (url->string (local-url (get-url))))
-    (define/public (get-feed-link) (get-atom-feed-link "all"))
+    (define/public (get-feed-link) (send config get-index-atom-feed-link 'main))
     ))
 
 
@@ -278,7 +439,7 @@
 ;; - 'date : String -- should have form "YYYY-MM-DD"
 ;; - 'authors : String (comma-separated)
 ;; - 'tags : String (comma-separated)
-;; - 'display : "index" | "draft" | "norender"
+;; - 'display : "index" | "draft" | "none"
 ;; - 'atomid : String, must be URI (or IRI?) -- use for porting
 
 ;; Metadata is gathered from the following sources (earlier overrides later):
@@ -309,7 +470,7 @@
   (string-split (hash-ref h 'tags "") #rx"[ ]*,[ ]*" #:trim? #t))
 (define (metadata-display h)
   (define v (hash-ref h 'display "index"))
-  (cond [(member v '("index" "draft" "norender")) v]
+  (cond [(member v '("index" "draft" "none")) v]
         [else (error 'metadata-display "bad display: ~e" v)]))
 (define (metadata-atom-id h) ;; FIXME: validate?
   (hash-ref h 'atomid #f))

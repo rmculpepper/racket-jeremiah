@@ -2,6 +2,7 @@
 (require racket/stxparam
          racket/class
          racket/file
+         "util.rkt"
          "config.rkt"
          "data.rkt"
          "build.rkt"
@@ -9,22 +10,23 @@
          "write.rkt")
 (provide go)
 
-;; go : -> Void
-(define (go #:include-draft? [include-draft? #f]
-            #:force-rebuild? [force-rebuild? #f])
-  (log-jeremiah-info "The post source dir is ~e" (get-post-src-dir))
-  (log-jeremiah-info "The post cache dir is ~e" (get-post-cache-dir))
-  (log-jeremiah-info "The output dir is ~e" (get-dest-dir))
+;; go : Config -> Void
+(define (go config #:force-rebuild? [force-rebuild? #f])
+  (log-jeremiah-info "The post source dir is ~e" (send config get-post-src-dir))
+  (log-jeremiah-info "The post cache dir is ~e" (send config get-post-cache-dir))
+  (log-jeremiah-info "The output dir is ~e" (send config get-dest-dir))
 
   ;; Find all post sources
   ;; FIXME: generalize to multiple dirs?
   (log-jeremiah-info "Finding post sources")
-  (define post-src-paths (find-files post-src-path? (get-post-src-dir)))
+  (define post-src-paths (find-files post-src-path? (send config get-post-src-dir)))
   (for ([path (in-list post-src-paths)])
     (log-jeremiah-debug "found post source: ~e" path))
   (log-jeremiah-info "Found ~s post sources" (length post-src-paths))
 
-  (define srcs (map path->postsrc post-src-paths))
+  (define srcs
+    (for/list ([path (in-list post-src-paths)])
+      (send config path->postsrc path)))
   (check-duplicate-post-src srcs)
 
   ;; First, build to cache
@@ -42,10 +44,9 @@
     (log-jeremiah-info "Finished building posts"))
 
   ;; Read metadata from cache, build index
-  (define site
-    (let ([posts (map read-post srcs)])
-      (log-jeremiah-info "Read ~s built posts" (length posts))
-      (new render-site% (posts posts) (include-draft? include-draft?))))
+  (define all-posts (for/list ([src (in-list srcs)]) (read-post config src)))
+  (log-jeremiah-info "Read ~s built posts" (length all-posts))
+  (define site (new render-site% (config config) (posts all-posts)))
   (define index (send site get-index))
   (log-jeremiah-info "Main index has ~s posts" (length (send index get-posts)))
 
@@ -56,9 +57,9 @@
 
     ;; Copy static resources
     (log-jeremiah-info "Copying static resources")
-    (for ([src-dir (in-list (reverse (pre-static-src-dirs)))])
-      (copy-static-files src-dir (get-dest-dir)))
-    (copy-static-files (get-static-src-dir) (get-dest-dir))
+    (for ([src-dir (in-list (reverse (send config get-pre-static-src-dirs)))])
+      (copy-static-files src-dir (send config get-dest-dir)))
+    (copy-static-files (send config get-static-src-dir) (send config get-dest-dir))
     (log-jeremiah-info "Finished copying static resources")
 
     ;; Write posts
@@ -110,9 +111,9 @@
         (copy-file src-file dest-file)))))
 
 ;; read-post : PostSrc -> Post
-(define (read-post src #:who [who 'read-post])
+(define (read-post config src #:who [who 'read-post])
   (define-values (meta blurb more?) (read-post-info src #:who who))
-  (new render-post% (src src) (meta meta) (blurb blurb) (more? more?)))
+  (new render-post% (config config) (src src) (meta meta) (blurb blurb) (more? more?)))
 
 
 ;; ----------------------------------------

@@ -1,8 +1,10 @@
 #lang racket/base
 (require racket/contract/base
+         "private/util.rkt"
          (only-in xml xml-attribute-encode xexpr/c)
          (only-in "private/xexpr.rkt" xexpr->html xexprs->html))
-(provide (contract-out
+(provide (all-from-out "private/util.rkt")
+         (contract-out
           [$h (->* [] [] #:rest (listof xexpr/c) string?)]
           [$hs (-> (listof xexpr/c) string?)]
           [$a (-> string? string?)])

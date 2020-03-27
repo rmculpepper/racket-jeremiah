@@ -8,7 +8,7 @@
          racket/path
          racket/file
          markdown
-         "config.rkt"
+         "util.rkt"
          "template.rkt"
          "data.rkt"
          "xexpr.rkt")
@@ -26,11 +26,6 @@
 (define (post-file-name? str)
   (or (regexp-match? #px"^\\d{4}-\\d{2}-(?:.+?)[.](?:md|mdt|scrbl|html)$" str)
       (regexp-match? #px"^(?:draft|post)-(?:.+?)[.](?:md|mdt|scrbl|html)$" str)))
-
-;; path->postsrc : Path -> postsrc
-(define (path->postsrc p)
-  (define name (path->string (file-name-from-path p)))
-  (postsrc p name (build-path (get-post-cache-dir) name)))
 
 
 ;; ============================================================

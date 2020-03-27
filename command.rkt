@@ -1,9 +1,12 @@
 #lang racket/base
 (require racket/cmdline
          racket/match
+         racket/class
          raco/command-name
          net/url
+         "private/util.rkt"
          "private/config.rkt"
+         "private/data.rkt"
          "private/main.rkt")
 (provide)
 
@@ -23,7 +26,6 @@
 (define (cmd:make args)
   (define the-site-file #f)
   (define force-rebuild? #f)
-  (define include-draft? #f)
   (command-line
    #:program (short-program+command-name)
    #:argv args
@@ -34,18 +36,14 @@
    [("--force-rebuild")
     "Force rebuild of posts from source"
     (set! force-rebuild? #t)]
-   [("--include-draft")
-    "Include draft posts in indexes"
-    (set! include-draft? #t)]
    #:args ()
-   (load-config-file the-site-file)
-   (go #:include-draft? include-draft?
-       #:force-rebuild? force-rebuild?)))
+   (define config (load-config the-site-file))
+   (go config #:force-rebuild? force-rebuild?)))
 
 (define SITE-FILE "site.rkt")
 
-;; load-config-file : PathString -> Void
-(define (load-config-file config-file)
+;; load-config : PathString -> Config
+(define (load-config config-file)
   (define config-path
     (cond [config-file
            ;; Note: race possible, but probably usually helpful
@@ -59,8 +57,10 @@
            (path->complete-path SITE-FILE)]))
   ;; Load site config file
   (log-jeremiah-debug "loading site configuration: ~e" config-path)
-  (dynamic-require config-path #f))
-
+  (call/allow-configuration
+   (lambda ()
+     (dynamic-require config-path #f)
+     (new config%))))
 
 ;; ============================================================
 ;; Preview
@@ -85,8 +85,8 @@
      #:args ()
      (unless (or the-site-file the-build-dir)
        (uerror "location not set (use `-s` or `-d`)"))
-     (when the-site-file (load-config-file the-site-file))
-     (preview #:dir (or the-build-dir (get-dest-dir))))))
+     (define config (and the-site-file (load-config the-site-file)))
+     (preview #:dir (or the-build-dir (send config get-dest-dir))))))
 
 
 ;; ============================================================
