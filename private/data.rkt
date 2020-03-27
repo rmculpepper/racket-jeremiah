@@ -201,6 +201,7 @@
       (for ([(k ts) (in-hash h)] #:when (> (length ts) 1))
         (log-jeremiah-error "tag collision: ~s" ts)))
 
+    (define/public (get-all-posts) posts)
     (define/public (get-posts) (send (get-index) get-posts))
     (define/public (get-tags) tags)
     (define/public (get-index) (hash-ref iname=>index 'main))

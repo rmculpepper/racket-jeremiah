@@ -64,8 +64,8 @@
 
     ;; Write posts
     (log-jeremiah-info "Writing posts")
-    (for ([post (in-list (send index get-posts))])
-      (send post write ))
+    (for ([post (in-list (send site get-all-posts))])
+      (send post write))
     (log-jeremiah-info "Finished writing posts")
 
     ;; Write indexes and feeds
