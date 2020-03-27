@@ -70,6 +70,48 @@
 
 
 ;; ============================================================
+;; Render index
+
+(define render-index%
+  (class index%
+    (inherit-field config iname)
+    (inherit get-posts
+             get-title
+             get-feed-dest-file
+             get-feed-url
+             get-index-main-url
+             get-atom-id
+             get-updated-8601)
+    (super-new)
+
+    ;; ----------------------------------------
+    ;; Atom
+
+    ;; References:
+    ;; - https://validator.w3.org/feed/docs/atom.html
+    ;; - https://tools.ietf.org/html/rfc4287
+
+    ;; get-atom-feed-xexpr : Index -> XExpr
+    ;; If tag is #f, feed name is "all" but tag index is main site.
+    (define/public (get-atom-feed-xexpr)
+      (define subtitle (if (eq? iname 'main) "All posts" (get-title)))
+      (define updated (or (get-updated-8601) "N/A"))
+      `(feed
+        ([xmlns "http://www.w3.org/2005/Atom"]
+         [xml:lang "en"])
+        (title ([type "text"]) ,(format "~a: ~a" (send config get-site-title) subtitle))
+        (author (name ,(send config get-site-author)))
+        (link ([rel "self"] [href ,(url->string (get-feed-url))]))
+        (link ([rel "alternate"] [href ,(url->string (get-index-main-url))]))
+        (id ,(get-atom-id))
+        (updated ,updated)
+        ,@(for/list ([post (in-list (get-posts))]
+                     [_ (in-range (send config get-site-max-feed-items))])
+            (send post get-atom-entry-xexpr))))
+    ))
+
+
+;; ============================================================
 ;; Render index page
 
 (define render-index-page%
@@ -104,11 +146,15 @@
 (define render-post%
   (class* post% (page<%>)
     (inherit-field config)
-    (inherit get-date
+    (inherit get-title
+             get-date
+             get-date-8601
              get-authors
              get-tags
+             get-more?
              get-link
              get-full-link
+             get-atom-id
              get-title-xexpr
              get-blurb-xexprs
              get-body-xexprs)
@@ -140,4 +186,23 @@
       (let ([index (send (the-site) get-index)]) (send index get-prev this)))
     (define/public (get-next-post)
       (let ([index (send (the-site) get-index)]) (send index get-next this)))
+
+    ;; ----------------------------------------
+    ;; Atom
+
+    (define/public (get-atom-entry-xexpr)
+      `(entry
+        (title ([type "text"]) ,(get-title))
+        (link ([rel "alternate"] [href ,(get-full-link)]))
+        (id ,(get-atom-id))
+        (published ,(get-date-8601))
+        (updated ,(get-date-8601))
+        ,@(map (lambda (author) `(author (name ,author))) (get-authors))
+        (content ([type "html"])
+                 ,(get-blurb-html)
+                 ,(cond [(get-more?)
+                         (xexpr->html
+                          `(a ([href ,(get-full-link)])
+                              (em "More" hellip)))]
+                        [else ""]))))
     ))

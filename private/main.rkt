@@ -46,7 +46,7 @@
   ;; Read metadata from cache, build index
   (define all-posts (for/list ([src (in-list srcs)]) (read-post config src)))
   (log-jeremiah-info "Read ~s built posts" (length all-posts))
-  (define site (new render-site% (config config) (posts all-posts)))
+  (define site (new write-site% (config config) (posts all-posts) (the-index% write-index%)))
   (define index (send site get-index))
   (log-jeremiah-info "Main index has ~s posts" (length (send index get-posts)))
 
@@ -65,7 +65,7 @@
     ;; Write posts
     (log-jeremiah-info "Writing posts")
     (for ([post (in-list (send index get-posts))])
-      (write-post post))
+      (send post write ))
     (log-jeremiah-info "Finished writing posts")
 
     ;; Write indexes and feeds
@@ -73,14 +73,16 @@
     (begin
       ;; Write main index and feed
       (log-jeremiah-debug "Writing main index and feed")
-      (write-index index)
-      (write-atom-feed index)
+      (send index write)
       ;; Write tag indexes and feeds
       (for ([tag (in-list (send site get-tags))])
         (log-jeremiah-debug "Writing index and feed for tag: ~e" tag)
         (define tag-index (send site get-tag-index tag))
-        (write-index tag-index)
-        (write-atom-feed tag-index)))
+        (send tag-index write))
+      ;; Write draft index
+      (cond [(send site get-tag-index 'draft)
+             => (lambda (draft-index) (send draft-index write))]
+            [else (void)]))
 
     ;; Done
     (log-jeremiah-info "Done")
@@ -113,7 +115,7 @@
 ;; read-post : PostSrc -> Post
 (define (read-post config src #:who [who 'read-post])
   (define-values (meta blurb more?) (read-post-info src #:who who))
-  (new render-post% (config config) (src src) (meta meta) (blurb blurb) (more? more?)))
+  (new write-post% (config config) (src src) (meta meta) (blurb blurb) (more? more?)))
 
 
 ;; ----------------------------------------

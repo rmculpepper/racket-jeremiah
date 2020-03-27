@@ -120,11 +120,10 @@
       (-base-rel-url "feeds" (get-index-atom-feed-file-name iname)))
 
     (define/public (get-index-atom-feed-file-name iname)
-      (format "~a.atom.xml"
-              (match iname
-                [(? string? tag) (slug tag)]
-                ['main "all"]
-                ['draft (error 'get-index-atom-feed-file-name "no atom feed for drafts")])))
+      (match iname
+        [(? string? tag) (format "~a.atom.xml" (slug tag))]
+        ['main "all.atom.xml"]
+        ['draft "draft.atom.xml"]))
 
     (define/public (get-index-atom-id iname)
       (define file-name (get-index-atom-feed-file-name iname))
@@ -180,7 +179,6 @@
     (define iname=>index
       (let ([iname=>posts (make-hash)])
         (hash-set! iname=>posts 'main null)
-        (hash-set! iname=>posts 'draft null)
         (for ([post (in-list posts)])
           (case (send post get-display)
             [("index")
