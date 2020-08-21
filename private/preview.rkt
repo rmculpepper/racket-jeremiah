@@ -10,7 +10,7 @@
          racket/list
          racket/file
          net/url
-         "config.rkt")
+         "util.rkt")
 (provide preview)
 
 (define PORT 3500)
@@ -42,8 +42,7 @@
                      (current-seconds) TEXT/HTML-MIME-TYPE
                      '() '(#"<html>File not found</html>\n"))))))
 
-(define (preview #:dir [dir (get-dest-dir)]
-                 #:url [url (get-base-url)])
+(define (preview #:dir dir #:url url)
   (ensure-external-browser-preference)
   (serve/launch/wait (lambda (_) (preview-dispatcher url dir))
                      #:launch-path (url->string (local-url url))

@@ -70,24 +70,17 @@
 
 (define (cmd:preview args)
   (define the-site-file #f)
-  (define the-build-dir #f)
-  (parameterize ((base-url (string->url "http://localhost/")))
-    (command-line
-     #:program (short-program+command-name)
-     #:argv args
-     #:once-any
-     [("-s" "--site-file") site-file
-      "Use the given site configuration file"
-      (set! the-site-file site-file)]
-     [("-d") build-dir
-      "Preview the contents of build-dir"
-      (set! the-build-dir build-dir)]
-     #:args ()
-     (unless (or the-site-file the-build-dir)
-       (uerror "location not set (use `-s` or `-d`)"))
-     (define config (and the-site-file (load-config the-site-file)))
-     (preview #:dir (or the-build-dir (send config get-dest-dir))))))
-
+  (command-line
+   #:program (short-program+command-name)
+   #:argv args
+   #:once-any
+   [("-s" "--site-file") site-file
+    "Use the given site configuration file"
+    (set! the-site-file site-file)]
+   #:args ()
+   (define config (load-config the-site-file))
+   (preview #:dir (send config get-dest-dir)
+            #:url (send config get-base-url))))
 
 ;; ============================================================
 ;; Help
